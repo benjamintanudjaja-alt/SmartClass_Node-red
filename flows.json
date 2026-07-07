@@ -1,6 +1,6 @@
 [
     {
-        "id": "90f067188d691d59",
+        "id": "a1b13acf0ebc83d8",
         "type": "tab",
         "label": "Flow 1",
         "disabled": false,
@@ -8,680 +8,12 @@
         "env": []
     },
     {
-        "id": "4f23ae1abb899bdb",
-        "type": "influxdb out",
-        "z": "90f067188d691d59",
-        "influxdb": "285041f7cec92dc2",
-        "name": "send to db",
-        "measurement": "classroom",
-        "precision": "",
-        "retentionPolicy": "",
-        "database": "database",
-        "precisionV18FluxV20": "ms",
-        "retentionPolicyV18Flux": "",
-        "org": "Binus",
-        "bucket": "SmartClass",
-        "x": 810,
-        "y": 460,
-        "wires": []
-    },
-    {
-        "id": "a8f560c0f751ca79",
-        "type": "function",
-        "z": "90f067188d691d59",
-        "name": "function 1",
-        "func": "// Topic format:\n// <room>/data/<field>\n\nvar parts = msg.topic.split(\"/\");\n\nvar room = parts[0];\nvar field = parts[2];\n\n// Build field name from topic\nvar influxField = \"data_\" + parts[2];\n\nconst stringFields = [\"ac\"];\nconst intFields = [\n    \"active\",\n    \"alert\",\n    \"co2\",\n    \"human\",\n    \"led\",\n    \"lux\",\n    \"projector\"\n];\nconst floatFields = [\"temp\"];\n\nvar value;\n\nif (stringFields.includes(field)) {\n    value = String(msg.payload);\n}\nelse if (intFields.includes(field)) {\n    value = parseInt(msg.payload, 10);\n\n    if (isNaN(value)) return null;\n\n    // VERY IMPORTANT\n    value = value.toString() + \"i\";\n}\nelse if (floatFields.includes(field)) {\n    value = parseFloat(msg.payload);\n\n    if (isNaN(value)) return null;\n}\nelse {\n    node.warn(\"Unknown field: \" + field);\n    return null;\n}\n\nmsg.payload = [\n    {\n        [field]: value\n    },\n    {\n        room: room\n    }\n];\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 540,
-        "y": 320,
-        "wires": [
-            [
-                "4f23ae1abb899bdb",
-                "2cc6bd9a8a6ac0fd"
-            ]
-        ]
-    },
-    {
-        "id": "f4245254cfbe7445",
-        "type": "mqtt in",
-        "z": "90f067188d691d59",
-        "name": "",
-        "topic": "+/data/+",
-        "qos": "2",
-        "datatype": "auto-detect",
-        "broker": "3ea80e6b0f49fd5b",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 300,
-        "y": 320,
-        "wires": [
-            [
-                "a8f560c0f751ca79"
-            ]
-        ]
-    },
-    {
-        "id": "8cf93eaa4054690d",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "data to send",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom\")\n  |> filter(fn: (r) =>\n      r._field == \"led\" or\n      r._field == \"projector\" or\n      r._field == \"ac\"\n  )\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 330,
-        "y": 540,
-        "wires": [
-            [
-                "028963db1637661c"
-            ]
-        ]
-    },
-    {
-        "id": "c9503856e72ae69b",
-        "type": "inject",
-        "z": "90f067188d691d59",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "2",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 190,
-        "y": 580,
-        "wires": [
-            [
-                "8cf93eaa4054690d"
-            ]
-        ]
-    },
-    {
-        "id": "3a93596b25c69b4a",
-        "type": "rbe",
-        "z": "90f067188d691d59",
-        "name": "",
-        "func": "rbe",
-        "gap": "",
-        "start": "",
-        "inout": "out",
-        "septopics": true,
-        "property": "payload",
-        "topi": "topic",
-        "x": 910,
-        "y": 580,
-        "wires": [
-            [
-                "6e8a358a6be130e0"
-            ]
-        ]
-    },
-    {
-        "id": "028963db1637661c",
-        "type": "split",
-        "z": "90f067188d691d59",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "property": "payload",
-        "x": 610,
-        "y": 680,
-        "wires": [
-            [
-                "7f4d3d2564cb9264"
-            ]
-        ]
-    },
-    {
-        "id": "7f4d3d2564cb9264",
-        "type": "function",
-        "z": "90f067188d691d59",
-        "name": "function 2",
-        "func": "let row = msg.payload;\n\nmsg.topic =\n\n    row.room +\n    \"/control/\" +\n    row._field;\n\nmsg.payload = String(row._value);\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 780,
-        "y": 640,
-        "wires": [
-            [
-                "3a93596b25c69b4a"
-            ]
-        ]
-    },
-    {
-        "id": "6e8a358a6be130e0",
-        "type": "mqtt out",
-        "z": "90f067188d691d59",
-        "name": "",
-        "topic": "",
-        "qos": "",
-        "retain": "",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "3ea80e6b0f49fd5b",
-        "x": 1050,
-        "y": 580,
-        "wires": []
-    },
-    {
-        "id": "167835d1dddaaf26",
-        "type": "inject",
-        "z": "90f067188d691d59",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "00 00 * * *",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 130,
-        "y": 800,
-        "wires": [
-            [
-                "72f835e05d12ce8c"
-            ]
-        ]
-    },
-    {
-        "id": "23e85b32f3d86659",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "Schedule",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Monday\")\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 620,
-        "y": 780,
-        "wires": [
-            [
-                "156b677249d7505a"
-            ]
-        ]
-    },
-    {
-        "id": "156b677249d7505a",
-        "type": "split",
-        "z": "90f067188d691d59",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "property": "payload",
-        "x": 870,
-        "y": 780,
-        "wires": [
-            [
-                "a5f33a3982eea936",
-                "d470469a3a62ee9d"
-            ]
-        ]
-    },
-    {
-        "id": "a5f33a3982eea936",
-        "type": "function",
-        "z": "90f067188d691d59",
-        "name": "function 3",
-        "func": "let row = msg.payload;\n\nmsg.topic =\n\n    row.room +\n    \"/control/schedule\";\n\nmsg.payload = String(row._value);\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1040,
-        "y": 780,
-        "wires": [
-            [
-                "bc92041501dbd139",
-                "6b9bee76cce92fac"
-            ]
-        ]
-    },
-    {
-        "id": "bc92041501dbd139",
-        "type": "mqtt out",
-        "z": "90f067188d691d59",
-        "name": "",
-        "topic": "",
-        "qos": "",
-        "retain": "",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "3ea80e6b0f49fd5b",
-        "x": 1190,
-        "y": 780,
-        "wires": []
-    },
-    {
-        "id": "72f835e05d12ce8c",
-        "type": "function",
-        "z": "90f067188d691d59",
-        "name": "function 4",
-        "func": "const days = [\n    \"Sunday\",\n    \"Monday\",\n    \"Tuesday\",\n    \"Wednesday\",\n    \"Thursday\",\n    \"Friday\",\n    \"Saturday\"\n];\n\nmsg.payload = days[new Date().getDay()];\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 300,
-        "y": 800,
-        "wires": [
-            [
-                "ac5059cd2634a075",
-                "8d7639291e50dc33",
-                "6647da6e6099c39c",
-                "0a093abece7f5d13",
-                "c5bc25e7988ff453",
-                "c00a42135f365fd5",
-                "dbf39147eeb5fa01",
-                "629bbefcbc9002d4"
-            ]
-        ]
-    },
-    {
-        "id": "ac5059cd2634a075",
-        "type": "switch",
-        "z": "90f067188d691d59",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "Monday",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 780,
-        "wires": [
-            [
-                "23e85b32f3d86659"
-            ]
-        ]
-    },
-    {
-        "id": "8d7639291e50dc33",
-        "type": "switch",
-        "z": "90f067188d691d59",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "Tuesday",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 820,
-        "wires": [
-            [
-                "8b943fb3918f7638"
-            ]
-        ]
-    },
-    {
-        "id": "8b943fb3918f7638",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "Schedule",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Tuesday\")\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 620,
-        "y": 820,
-        "wires": [
-            [
-                "156b677249d7505a"
-            ]
-        ]
-    },
-    {
-        "id": "6647da6e6099c39c",
-        "type": "switch",
-        "z": "90f067188d691d59",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "Wednesday",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 860,
-        "wires": [
-            [
-                "fcd0ec523bb42c16"
-            ]
-        ]
-    },
-    {
-        "id": "fcd0ec523bb42c16",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "Schedule",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Wednesday\")\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 620,
-        "y": 860,
-        "wires": [
-            [
-                "156b677249d7505a"
-            ]
-        ]
-    },
-    {
-        "id": "0a093abece7f5d13",
-        "type": "switch",
-        "z": "90f067188d691d59",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "Thursday",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 900,
-        "wires": [
-            [
-                "ad1e005043896e37"
-            ]
-        ]
-    },
-    {
-        "id": "ad1e005043896e37",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "Schedule",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Thursday\")\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 620,
-        "y": 900,
-        "wires": [
-            [
-                "156b677249d7505a"
-            ]
-        ]
-    },
-    {
-        "id": "c5bc25e7988ff453",
-        "type": "switch",
-        "z": "90f067188d691d59",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "Friday",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 940,
-        "wires": [
-            [
-                "47262d68c6fd0e9c"
-            ]
-        ]
-    },
-    {
-        "id": "47262d68c6fd0e9c",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "Schedule",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Friday\")\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 620,
-        "y": 940,
-        "wires": [
-            [
-                "156b677249d7505a"
-            ]
-        ]
-    },
-    {
-        "id": "c00a42135f365fd5",
-        "type": "switch",
-        "z": "90f067188d691d59",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "Saturday",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 980,
-        "wires": [
-            [
-                "352241c104f76b08"
-            ]
-        ]
-    },
-    {
-        "id": "352241c104f76b08",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "Schedule",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Saturday\")\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 620,
-        "y": 980,
-        "wires": [
-            [
-                "156b677249d7505a"
-            ]
-        ]
-    },
-    {
-        "id": "dbf39147eeb5fa01",
-        "type": "switch",
-        "z": "90f067188d691d59",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "Friday",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 1020,
-        "wires": [
-            [
-                "bcb39303dd016699"
-            ]
-        ]
-    },
-    {
-        "id": "bcb39303dd016699",
-        "type": "influxdb in",
-        "z": "90f067188d691d59",
-        "influxdb": "dc73abf4855e0f43",
-        "name": "Schedule",
-        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Friday\")\n  |> last()",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "Binus",
-        "x": 620,
-        "y": 1020,
-        "wires": [
-            [
-                "156b677249d7505a"
-            ]
-        ]
-    },
-    {
-        "id": "629bbefcbc9002d4",
-        "type": "debug",
-        "z": "90f067188d691d59",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 440,
-        "y": 1080,
-        "wires": []
-    },
-    {
-        "id": "d470469a3a62ee9d",
-        "type": "debug",
-        "z": "90f067188d691d59",
-        "name": "debug 2",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1060,
-        "y": 880,
-        "wires": []
-    },
-    {
-        "id": "6b9bee76cce92fac",
-        "type": "debug",
-        "z": "90f067188d691d59",
-        "name": "debug 3",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1240,
-        "y": 840,
-        "wires": []
-    },
-    {
-        "id": "2cc6bd9a8a6ac0fd",
-        "type": "debug",
-        "z": "90f067188d691d59",
-        "name": "debug 4",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 800,
-        "y": 320,
-        "wires": []
-    },
-    {
-        "id": "2b5da9ba1e7dfa16",
-        "type": "ui_spacer",
-        "z": "90f067188d691d59",
-        "name": "spacer",
-        "group": "79354796f726b0aa",
-        "order": 1,
-        "width": 1,
-        "height": 1
+        "id": "38555e5d51f8978d",
+        "type": "tab",
+        "label": "Dashboard",
+        "disabled": false,
+        "info": "",
+        "env": []
     },
     {
         "id": "285041f7cec92dc2",
@@ -766,37 +98,6 @@
             "@flowfuse/node-red-dashboard-2-ui-led": "1.1.0",
             "node-red-contrib-moment": "5.0.0"
         }
-    },
-    {
-        "id": "ac_control_parser_node",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Parse AC Control",
-        "func": "let val = String(msg.payload);\nif (val.length === 8) {\n    let power = parseInt(val.substring(0, 2), 10) === 1;\n    let temp = parseInt(val.substring(2, 4), 10);\n    return [ { payload: power }, { payload: temp } ];\n} else if (val.length === 3) {\n    let power = parseInt(val.substring(0, 1), 10) === 1;\n    let temp = parseInt(val.substring(1, 3), 10);\n    return [ { payload: power }, { payload: temp } ];\n}\nreturn null;",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 400,
-        "y": 770,
-        "wires": [
-            [
-                "db844419bd09ee3f"
-            ],
-            [
-                "06b566e6988eabd0"
-            ]
-        ]
-    },
-    {
-        "id": "5889d3dbc3b1abfc",
-        "type": "tab",
-        "label": "Dashboard",
-        "disabled": false,
-        "info": "",
-        "env": []
     },
     {
         "id": "06f1f55e1db341f1",
@@ -921,98 +222,6 @@
         "groupType": "default"
     },
     {
-        "id": "ea5ac57d614953e9",
-        "type": "ui-page",
-        "name": "Classroom HD1",
-        "ui": "06f1f55e1db341f1",
-        "path": "/Classroom HD1",
-        "icon": "account-cowboy-hat",
-        "layout": "grid",
-        "theme": "2d1d01a6a9d8ae63",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 2,
-        "className": "",
-        "visible": true,
-        "disabled": false
-    },
-    {
-        "id": "645e6a5b1b42e113",
-        "type": "ui-group",
-        "name": "HD1",
-        "page": "addaba99d60ade39",
-        "width": "3",
-        "height": "3",
-        "order": 2,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "dc28dfc039a0c297",
-        "type": "ui-group",
-        "name": "Title",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": 1,
-        "order": 1,
-        "showTitle": false,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "b683be746b7871c8",
-        "type": "ui-group",
-        "name": "Temperature Chart",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": 1,
-        "order": 7,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "5a9018f1b99440e2",
-        "type": "ui-group",
-        "name": "Kendali Suhu AC",
-        "page": "ea5ac57d614953e9",
-        "width": "6",
-        "height": 1,
-        "order": 4,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
         "id": "2abd542ed67dc832",
         "type": "ui-page",
         "name": "Page 3",
@@ -1060,34 +269,6 @@
         "className": ""
     },
     {
-        "id": "60183a643617e85c",
-        "type": "ui-group",
-        "name": "Kendali Lampu Ruangan",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": "4",
-        "order": 6,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "81517c8bc0431790",
-        "type": "ui-group",
-        "name": "Kendali Proyektor",
-        "page": "ea5ac57d614953e9",
-        "width": 6,
-        "height": 1,
-        "order": 5,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
         "id": "06b5f32f784425ca",
         "type": "ui-spacer",
         "group": "60183a643617e85c",
@@ -1097,20 +278,6 @@
         "width": "3",
         "height": 1,
         "className": ""
-    },
-    {
-        "id": "2e5908390e0c39bd",
-        "type": "ui-group",
-        "name": "Kondisi Ruangan",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": "1",
-        "order": 3,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
     },
     {
         "id": "54266c8b45cc65bf",
@@ -1124,20 +291,6 @@
         "className": ""
     },
     {
-        "id": "a0d3c1c196448c80",
-        "type": "ui-group",
-        "name": "Humidity Chart",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": 1,
-        "order": 8,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
         "id": "973a7f5b4ae751bd",
         "type": "ui-spacer",
         "group": "a0d3c1c196448c80",
@@ -1149,20 +302,6 @@
         "className": ""
     },
     {
-        "id": "fd8788b87c387cae",
-        "type": "ui-group",
-        "name": "Lux Chart",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": 1,
-        "order": 9,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
         "id": "677c748d1a3ef64a",
         "type": "ui-spacer",
         "group": "fd8788b87c387cae",
@@ -1172,34 +311,6 @@
         "width": "3",
         "height": 1,
         "className": ""
-    },
-    {
-        "id": "99298c45c45b3c75",
-        "type": "ui-group",
-        "name": "Kendala Ruangan",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": 1,
-        "order": 2,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "7d76c15d01cc0758",
-        "type": "ui-group",
-        "name": "Co Chart ",
-        "page": "ea5ac57d614953e9",
-        "width": "12",
-        "height": 1,
-        "order": 10,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
     },
     {
         "id": "2e1713c63c8d59f4",
@@ -1235,65 +346,197 @@
         "className": ""
     },
     {
-        "id": "ae8ca378e3a0cdb0",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "person",
-        "group": "dc28dfc039a0c297",
-        "order": 3,
-        "width": "2",
+        "id": "15d20fc04fbde5f1",
+        "type": "ui_spacer",
+        "z": "a1b13acf0ebc83d8",
+        "name": "spacer",
+        "group": "79354796f726b0aa",
+        "order": 1,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "class_overview_group",
+        "type": "ui-group",
+        "z": "38555e5d51f8978d",
+        "name": "Classrooms Overview",
+        "page": "addaba99d60ade39",
+        "width": "12",
         "height": "1",
-        "label": "Orang di dalam",
-        "labelPlacement": "left",
-        "labelAlignment": "flex-end",
-        "states": [
-            {
-                "value": "0",
-                "valueType": "num",
-                "color": "#ff0000"
-            },
-            {
-                "value": "1",
-                "valueType": "num",
-                "color": "#00ff00"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "circle",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 1450,
-        "y": 380,
+        "order": 2,
+        "className": ""
+    },
+    {
+        "id": "dc368db73e4f397d",
+        "type": "influxdb out",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "285041f7cec92dc2",
+        "name": "send to db",
+        "measurement": "classroom",
+        "precision": "",
+        "retentionPolicy": "",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "Binus",
+        "bucket": "SmartClass",
+        "x": 810,
+        "y": 460,
         "wires": []
     },
     {
-        "id": "711188270eb9583b",
+        "id": "78ac9837c454b6ad",
+        "type": "function",
+        "z": "a1b13acf0ebc83d8",
+        "name": "function 1",
+        "func": "// Topic format:\n// <room>/<type>/<field> (where <type> is data or control)\n\nvar parts = msg.topic.split(\"/\");\nif (parts.length !== 3) {\n    return null;\n}\n\nvar room = parts[0];\nvar type = parts[1];\nvar field = parts[2];\n\nif (type !== \"data\" && type !== \"control\") {\n    node.warn(\"Unknown type: \" + type);\n    return null;\n}\n\n// Set measurement name dynamically based on type (data or control)\nmsg.measurement = \"classroom_\" + type;\n\n// Build field name from topic\nvar influxField = type + \"_\" + field;\n\nconst stringFields = [\"ac\", \"status\", \"command\"];\nconst intFields = [\n    \"active\",\n    \"alert\",\n    \"co2\",\n    \"human\",\n    \"led\",\n    \"lux\",\n    \"projector\",\n    \"led_data\",\n    \"ac_data\",\n    \"projector_data\"\n];\nconst floatFields = [\"temp\"];\n\nvar value;\n\nif (intFields.includes(field)) {\n    value = parseInt(msg.payload, 10);\n\n    if (isNaN(value)) return null;\n\n    // VERY IMPORTANT\n    value = value.toString() + \"i\";\n}\nelse if (floatFields.includes(field)) {\n    value = parseFloat(msg.payload);\n\n    if (isNaN(value)) return null;\n}\nelse if (stringFields.includes(field)) {\n    // If it's status or command, check if it can be parsed as an integer first\n    if (field === \"status\" || field === \"command\") {\n        let parsed = parseInt(msg.payload, 10);\n        if (!isNaN(parsed) && String(parsed) === String(msg.payload).trim()) {\n            value = parsed.toString() + \"i\";\n        } else {\n            value = String(msg.payload);\n        }\n    } else {\n        value = String(msg.payload);\n    }\n}\nelse {\n    node.warn(\"Unknown field: \" + field);\n    return null;\n}\n\nmsg.payload = [\n    {\n        [field]: value\n    },\n    {\n        room: room\n    }\n];\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 320,
+        "wires": [
+            [
+                "dc368db73e4f397d",
+                "1865875fc24660cc"
+            ]
+        ]
+    },
+    {
+        "id": "04629adfe1d35ea2",
         "type": "mqtt in",
-        "z": "5889d3dbc3b1abfc",
+        "z": "a1b13acf0ebc83d8",
         "name": "",
-        "topic": "HD01/data/+",
-        "qos": "0",
+        "topic": "+/+/+",
+        "qos": "2",
         "datatype": "auto-detect",
         "broker": "3ea80e6b0f49fd5b",
         "nl": false,
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 510,
-        "y": 940,
+        "x": 300,
+        "y": 320,
         "wires": [
             [
-                "86acc8b103ecf40e"
+                "78ac9837c454b6ad"
             ]
         ]
     },
     {
-        "id": "664c743e5d9ccf5a",
-        "type": "mqtt out",
-        "z": "5889d3dbc3b1abfc",
+        "id": "96a8fcef348f7a32",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "data to send",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_control\")\n  |> filter(fn: (r) =>\n      r._field == \"led\" or\n      r._field == \"projector\" or\n      r._field == \"ac\"\n  )\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 330,
+        "y": 540,
+        "wires": [
+            [
+                "d6da2c0d7ce04d52"
+            ]
+        ]
+    },
+    {
+        "id": "275cfc0ecef010a3",
+        "type": "inject",
+        "z": "a1b13acf0ebc83d8",
         "name": "",
-        "topic": "HD01/control/projector",
-        "qos": "1",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "2",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 580,
+        "wires": [
+            [
+                "96a8fcef348f7a32"
+            ]
+        ]
+    },
+    {
+        "id": "cad3c487f58fe6f1",
+        "type": "rbe",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "func": "rbe",
+        "gap": "",
+        "start": "",
+        "inout": "out",
+        "septopics": true,
+        "property": "payload",
+        "topi": "topic",
+        "x": 910,
+        "y": 580,
+        "wires": [
+            [
+                "560cc320dd41e474"
+            ]
+        ]
+    },
+    {
+        "id": "d6da2c0d7ce04d52",
+        "type": "split",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 610,
+        "y": 680,
+        "wires": [
+            [
+                "2a01f38f6a5af068"
+            ]
+        ]
+    },
+    {
+        "id": "2a01f38f6a5af068",
+        "type": "function",
+        "z": "a1b13acf0ebc83d8",
+        "name": "function 2",
+        "func": "let row = msg.payload;\n\nmsg.topic =\n\n    row.room +\n    \"/control/\" +\n    row._field;\n\nmsg.payload = String(row._value);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 640,
+        "wires": [
+            [
+                "cad3c487f58fe6f1"
+            ]
+        ]
+    },
+    {
+        "id": "560cc320dd41e474",
+        "type": "mqtt out",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "topic": "",
+        "qos": "",
         "retain": "",
         "respTopic": "",
         "contentType": "",
@@ -1301,49 +544,498 @@
         "correl": "",
         "expiry": "",
         "broker": "3ea80e6b0f49fd5b",
-        "x": 970,
-        "y": 640,
+        "x": 1050,
+        "y": 580,
         "wires": []
     },
     {
-        "id": "06b566e6988eabd0",
-        "type": "ui-slider",
-        "z": "5889d3dbc3b1abfc",
-        "group": "5a9018f1b99440e2",
-        "name": "AC Temp",
-        "label": "AC Temp",
-        "tooltip": "",
-        "order": 2,
-        "width": "4",
-        "height": "1",
-        "passthru": false,
-        "outs": "end",
-        "topic": "hvac_temp",
-        "topicType": "str",
-        "thumbLabel": "true",
-        "showTicks": "always",
-        "min": "18",
-        "max": "30",
-        "step": 1,
-        "className": "",
-        "iconPrepend": "",
-        "iconAppend": "sun-snowflake-variant",
-        "color": "red",
-        "colorTrack": "blue",
-        "colorThumb": "",
-        "showTextField": false,
-        "x": 1580,
-        "y": 740,
+        "id": "eff089e24a5f3bb6",
+        "type": "inject",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 00 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 800,
         "wires": [
             [
-                "1503f74614dba0ed"
+                "7885f6d66bef039b"
             ]
         ]
     },
     {
-        "id": "65a24cf2234ad6c0",
+        "id": "adc323d1d6878a96",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Schedule",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Monday\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 620,
+        "y": 780,
+        "wires": [
+            [
+                "1842c0ea8c800ee2"
+            ]
+        ]
+    },
+    {
+        "id": "1842c0ea8c800ee2",
+        "type": "split",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 870,
+        "y": 780,
+        "wires": [
+            [
+                "d86886de512d8a44",
+                "887f7913182a3641"
+            ]
+        ]
+    },
+    {
+        "id": "d86886de512d8a44",
+        "type": "function",
+        "z": "a1b13acf0ebc83d8",
+        "name": "function 3",
+        "func": "let row = msg.payload;\n\nmsg.topic =\n\n    row.room +\n    \"/control/schedule\";\n\nmsg.payload = String(row._value);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 780,
+        "wires": [
+            [
+                "7fe46bbe5d0a3fa1",
+                "9fc884c597834efd"
+            ]
+        ]
+    },
+    {
+        "id": "7fe46bbe5d0a3fa1",
+        "type": "mqtt out",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "3ea80e6b0f49fd5b",
+        "x": 1190,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "7885f6d66bef039b",
+        "type": "function",
+        "z": "a1b13acf0ebc83d8",
+        "name": "function 4",
+        "func": "const days = [\n    \"Sunday\",\n    \"Monday\",\n    \"Tuesday\",\n    \"Wednesday\",\n    \"Thursday\",\n    \"Friday\",\n    \"Saturday\"\n];\n\nmsg.payload = days[new Date().getDay()];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 800,
+        "wires": [
+            [
+                "76124cbc0844e94d",
+                "f241c7996dfa4295",
+                "28d367794eab7305",
+                "bc6f33f394acc360",
+                "c2245c5fbb653933",
+                "ddc3743cc624dbe3",
+                "8d8c9e449b46510e",
+                "1a19940d85b7a65e"
+            ]
+        ]
+    },
+    {
+        "id": "76124cbc0844e94d",
+        "type": "switch",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Monday",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 780,
+        "wires": [
+            [
+                "adc323d1d6878a96"
+            ]
+        ]
+    },
+    {
+        "id": "f241c7996dfa4295",
+        "type": "switch",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Tuesday",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 820,
+        "wires": [
+            [
+                "8b1c445ddc6a34a1"
+            ]
+        ]
+    },
+    {
+        "id": "8b1c445ddc6a34a1",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Schedule",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Tuesday\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 620,
+        "y": 820,
+        "wires": [
+            [
+                "1842c0ea8c800ee2"
+            ]
+        ]
+    },
+    {
+        "id": "28d367794eab7305",
+        "type": "switch",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Wednesday",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 860,
+        "wires": [
+            [
+                "cdb6941a54054ef2"
+            ]
+        ]
+    },
+    {
+        "id": "cdb6941a54054ef2",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Schedule",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Wednesday\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 620,
+        "y": 860,
+        "wires": [
+            [
+                "1842c0ea8c800ee2"
+            ]
+        ]
+    },
+    {
+        "id": "bc6f33f394acc360",
+        "type": "switch",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Thursday",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 900,
+        "wires": [
+            [
+                "d1dcc2f377afc4d0"
+            ]
+        ]
+    },
+    {
+        "id": "d1dcc2f377afc4d0",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Schedule",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Thursday\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 620,
+        "y": 900,
+        "wires": [
+            [
+                "1842c0ea8c800ee2"
+            ]
+        ]
+    },
+    {
+        "id": "c2245c5fbb653933",
+        "type": "switch",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Friday",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 940,
+        "wires": [
+            [
+                "6ab15e1566529d8b"
+            ]
+        ]
+    },
+    {
+        "id": "6ab15e1566529d8b",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Schedule",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Friday\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 620,
+        "y": 940,
+        "wires": [
+            [
+                "1842c0ea8c800ee2"
+            ]
+        ]
+    },
+    {
+        "id": "ddc3743cc624dbe3",
+        "type": "switch",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Saturday",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 980,
+        "wires": [
+            [
+                "0b48ceb6c59621a9"
+            ]
+        ]
+    },
+    {
+        "id": "0b48ceb6c59621a9",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Schedule",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Saturday\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 620,
+        "y": 980,
+        "wires": [
+            [
+                "1842c0ea8c800ee2"
+            ]
+        ]
+    },
+    {
+        "id": "8d8c9e449b46510e",
+        "type": "switch",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Friday",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 1020,
+        "wires": [
+            [
+                "203d6343ec3bf0d5"
+            ]
+        ]
+    },
+    {
+        "id": "203d6343ec3bf0d5",
+        "type": "influxdb in",
+        "z": "a1b13acf0ebc83d8",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Schedule",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> filter(fn: (r) => r._field == \"Friday\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 620,
+        "y": 1020,
+        "wires": [
+            [
+                "1842c0ea8c800ee2"
+            ]
+        ]
+    },
+    {
+        "id": "1a19940d85b7a65e",
+        "type": "debug",
+        "z": "a1b13acf0ebc83d8",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 440,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "887f7913182a3641",
+        "type": "debug",
+        "z": "a1b13acf0ebc83d8",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1060,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "9fc884c597834efd",
+        "type": "debug",
+        "z": "a1b13acf0ebc83d8",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1240,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "1865875fc24660cc",
+        "type": "debug",
+        "z": "a1b13acf0ebc83d8",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "7c20841b07811598",
         "type": "moment",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "name": "",
         "topic": "",
         "input": "payload",
@@ -1361,14 +1053,14 @@
         "y": 40,
         "wires": [
             [
-                "a6f376afe44899ce"
+                "53466ec36686119d"
             ]
         ]
     },
     {
-        "id": "a6f376afe44899ce",
+        "id": "53466ec36686119d",
         "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "group": "0c3c5ebdba98837d",
         "order": 1,
         "width": "6",
@@ -1390,9 +1082,9 @@
         "wires": []
     },
     {
-        "id": "5b0c2ecda0d6ddd0",
+        "id": "85fdaee7624b916d",
         "type": "inject",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "name": "",
         "props": [
             {
@@ -1410,14 +1102,14 @@
         "y": 40,
         "wires": [
             [
-                "65a24cf2234ad6c0"
+                "7c20841b07811598"
             ]
         ]
     },
     {
-        "id": "6af5c21605e241df",
+        "id": "0eefca5c4e38e7ea",
         "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "name": "MQTT Connection",
         "group": "0c3c5ebdba98837d",
         "order": 2,
@@ -1452,240 +1144,25 @@
         "wires": []
     },
     {
-        "id": "30efcca1a4a29375",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "HD1 Connection",
-        "group": "645e6a5b1b42e113",
-        "order": 2,
-        "width": "3",
-        "height": "1",
-        "label": "MQTT",
-        "labelPlacement": "left",
-        "labelAlignment": "flex-start",
-        "states": [
-            {
-                "value": "0",
-                "valueType": "num",
-                "color": "#ff0000"
-            },
-            {
-                "value": "1",
-                "valueType": "num",
-                "color": "#00ff00"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "square",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 1700,
-        "y": 40,
-        "wires": []
-    },
-    {
-        "id": "5af6816762c39e22",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "645e6a5b1b42e113",
-        "order": 4,
-        "width": 0,
-        "height": 0,
-        "name": "Humid AVG",
-        "label": "Humidity: ",
-        "format": "{{msg.payload}}",
-        "layout": "row-spread",
-        "style": true,
-        "font": "",
-        "fontSize": "20",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "payload.humAvg",
-        "valueType": "msg",
-        "x": 1710,
-        "y": 80,
-        "wires": []
-    },
-    {
-        "id": "8574496931873966",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "645e6a5b1b42e113",
-        "order": 3,
-        "width": 0,
-        "height": 0,
-        "name": "Temp AVG HD01",
-        "label": "Temp: ",
-        "format": "{{msg.payload}}",
-        "layout": "row-spread",
-        "style": true,
-        "font": "",
-        "fontSize": "20",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "payload.tempAvg",
-        "valueType": "msg",
-        "x": 1690,
-        "y": 120,
-        "wires": []
-    },
-    {
-        "id": "dc2bdebd85ce2f0d",
-        "type": "ui-button",
-        "z": "5889d3dbc3b1abfc",
-        "group": "645e6a5b1b42e113",
-        "name": "Open HD1",
-        "label": "Detail",
-        "order": 5,
-        "width": 0,
-        "height": 0,
-        "emulateClick": false,
-        "tooltip": "",
-        "color": "",
-        "bgcolor": "",
-        "className": "",
-        "icon": "",
-        "iconPosition": "left",
-        "payload": "",
-        "payloadType": "str",
-        "topic": "topic",
-        "topicType": "msg",
-        "buttonColor": "",
-        "textColor": "",
-        "iconColor": "",
-        "enableClick": true,
-        "enablePointerdown": false,
-        "pointerdownPayload": "",
-        "pointerdownPayloadType": "str",
-        "enablePointerup": false,
-        "pointerupPayload": "",
-        "pointerupPayloadType": "str",
-        "x": 1490,
-        "y": 200,
-        "wires": [
-            [
-                "e63cabcc0e64b162"
-            ]
-        ]
-    },
-    {
-        "id": "1efba3728994692e",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Overall Status",
-        "group": "645e6a5b1b42e113",
-        "order": 1,
-        "width": 0,
-        "height": 0,
-        "label": "Status",
-        "labelPlacement": "left",
-        "labelAlignment": "flex-start",
-        "states": [
-            {
-                "value": "2",
-                "valueType": "num",
-                "color": "#00ff00"
-            },
-            {
-                "value": "1",
-                "valueType": "num",
-                "color": "#ff8000"
-            },
-            {
-                "value": "0",
-                "valueType": "num",
-                "color": "#ff0000"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "square",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 1700,
-        "y": 160,
-        "wires": []
-    },
-    {
-        "id": "e63cabcc0e64b162",
-        "type": "change",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{\"page\": \"Classroom HD1\"}",
-                "tot": "json"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1700,
-        "y": 200,
-        "wires": [
-            [
-                "1fadf98656e80ef2"
-            ]
-        ]
-    },
-    {
-        "id": "1fadf98656e80ef2",
-        "type": "ui-control",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "ui": "06f1f55e1db341f1",
-        "events": "all",
-        "x": 1880,
-        "y": 200,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "9c4407bef7faf416",
+        "id": "165bff3d517ae0eb",
         "type": "status",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "name": "",
         "scope": [
-            "5ea58a76c9dea2e6"
+            "bfb68ed2a8ff820a"
         ],
         "x": 80,
         "y": 80,
         "wires": [
             [
-                "216a5264e73023e5"
+                "c83f25b1feea046c"
             ]
         ]
     },
     {
-        "id": "5ea58a76c9dea2e6",
-        "type": "mqtt in",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/data/active",
-        "qos": "0",
-        "datatype": "auto-detect",
-        "broker": "3ea80e6b0f49fd5b",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 110,
-        "y": 120,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "216a5264e73023e5",
+        "id": "c83f25b1feea046c",
         "type": "function",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "name": "MQTT Status",
         "func": "// Extract the raw status text from the node\nlet mqttState = msg.status.text;\n\n// Map the text to integers\nif (mqttState === \"node-red:common.status.connected\") {\n    msg.payload = 2; \n} else if (mqttState === \"node-red:common.status.connecting\") {\n    msg.payload = 1;\n} else {\n    // This catches \"disconnected\", \"error\", or any other failure state\n    msg.payload = 0; \n}\n\nreturn msg;",
         "outputs": 1,
@@ -1698,418 +1175,14 @@
         "y": 80,
         "wires": [
             [
-                "6af5c21605e241df"
+                "0eefca5c4e38e7ea"
             ]
         ]
     },
     {
-        "id": "f4141f82abc9a249",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "dc28dfc039a0c297",
-        "order": 1,
-        "width": "2",
-        "height": "1",
-        "name": "HD1 Title",
-        "label": "HD1",
-        "format": "{{msg.payload}}",
-        "layout": "row-left",
-        "style": true,
-        "font": "",
-        "fontSize": "30",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "payload",
-        "valueType": "msg",
-        "x": 460,
-        "y": 260,
-        "wires": []
-    },
-    {
-        "id": "9031e56cc3a66b9e",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "MQTT Connection",
-        "group": "dc28dfc039a0c297",
-        "order": 4,
-        "width": "2",
-        "height": "1",
-        "label": "MQTT Connection",
-        "labelPlacement": "left",
-        "labelAlignment": "flex-end",
-        "states": [
-            {
-                "value": "0",
-                "valueType": "num",
-                "color": "#ff0000"
-            },
-            {
-                "value": "1",
-                "valueType": "num",
-                "color": "#00ff00"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "square",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 2090,
-        "y": 380,
-        "wires": []
-    },
-    {
-        "id": "9e4cb4713e8b1309",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Status function",
-        "func": "// Extract the raw status text from the node\nlet mqttState = String(msg.payload);\n\n// Map the text to integers\nif (mqttState === \"Online\" || mqttState === \"1\") {\n    msg.payload = 1; \n    flow.set(\"mqttCondition\", 1);\n} else {\n    // This catches \"disconnected\", \"error\", or any other failure state\n    msg.payload = 0; \n    flow.set(\"mqttCondition\", 0);\n}\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1860,
-        "y": 380,
-        "wires": [
-            [
-                "9031e56cc3a66b9e",
-                "30efcca1a4a29375"
-            ]
-        ]
-    },
-    {
-        "id": "8577f86f325fa334",
+        "id": "8a021193d2ac8c58",
         "type": "mqtt in",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/data/active",
-        "qos": "1",
-        "datatype": "auto-detect",
-        "broker": "3ea80e6b0f49fd5b",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 1620,
-        "y": 380,
-        "wires": [
-            [
-                "9e4cb4713e8b1309"
-            ]
-        ]
-    },
-    {
-        "id": "79e0e59b84d5f3ea",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "2e5908390e0c39bd",
-        "order": 1,
-        "width": "2",
-        "height": "1",
-        "name": "Temperature",
-        "label": "Suhu dalam:",
-        "format": "{{msg.payload}}",
-        "layout": "row-left",
-        "style": true,
-        "font": "",
-        "fontSize": "25",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "$round(payload.tempAvg, 1) & \" °C\"",
-        "valueType": "jsonata",
-        "x": 450,
-        "y": 460,
-        "wires": []
-    },
-    {
-        "id": "0fe7e0a6930207ec",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "2e5908390e0c39bd",
-        "order": 2,
-        "width": "2",
-        "height": "1",
-        "name": "Humidity",
-        "label": "Kelembaban:",
-        "format": "{{msg.payload}}",
-        "layout": "row-left",
-        "style": true,
-        "font": "",
-        "fontSize": "25",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "$round(payload.humAvg, 1) & \" %\"",
-        "valueType": "jsonata",
-        "x": 620,
-        "y": 460,
-        "wires": []
-    },
-    {
-        "id": "69f6e9379aa418a3",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "2e5908390e0c39bd",
-        "order": 3,
-        "width": "2",
-        "height": "1",
-        "name": "CO",
-        "label": "Kadar CO:",
-        "format": "{{msg.payload}}",
-        "layout": "row-left",
-        "style": true,
-        "font": "",
-        "fontSize": "25",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "$round(payload.co, 1) & \" PPM\"",
-        "valueType": "jsonata",
-        "x": 790,
-        "y": 460,
-        "wires": []
-    },
-    {
-        "id": "130f8827dd5ce764",
-        "type": "ui-template",
-        "z": "5889d3dbc3b1abfc",
-        "group": "81517c8bc0431790",
-        "page": "",
-        "ui": "",
-        "name": "UI Buttons",
-        "order": 1,
-        "width": "1",
-        "height": "1",
-        "head": "",
-        "format": "<style>\n/* 1. THE ICON BACKGROUND BOX */\n  /* Target the Vuetify button element directly */\n  .massive-switch .v-btn {\n      height: 60px !important;\n      width: 60px !important;\n      border-radius: 6px !important;\n      \n      /* Default OFF Background (Industrial Red) */\n      background-color: #d32f2f !important; \n      \n      /* Force the actual icon graphic to be perfectly white */\n      color: #FFFFFF !important; \n      \n      box-shadow: 0px 4px 6px rgba(0,0,0,0.3) !important;\n      transition: background-color 0.3s ease !important;\n      \n      /* Reset layout margins to ensure it centers nicely */\n      margin: 0 !important;\n  }\n\n  /* 2. THE \"ON\" STATE STYLING */\n  /* FlowFuse Dashboard 2.0 applies color classes to the button based on your node settings.\n     Assuming you set the \"On Colour\" to green in the node properties, we target .text-green \n     to trigger the background color shift. */\n  .massive-switch .v-btn.text-green {\n      background-color: #388e3c !important; /* ON Background (Industrial Green) */\n  }\n\n  /* 3. THE ICON GRAPHIC SIZE */\n  .massive-switch .v-btn .v-icon {\n      font-size: 35px !important;\n  }\n\n  /* 4. CLEAN UP VUETIFY HOVER EFFECTS */\n  /* Vuetify adds grey circles when you click or hover. This deletes them to keep the HMI looking like hardware. */\n  .massive-switch .v-btn__overlay,\n  .massive-switch .v-btn__underlay {\n      display: none !important;\n  }\n\n  /* 5. THE TEXT LABEL */\n  .massive-switch .v-label {\n      font-size: 30px !important;\n      color: #FFFFFF !important;\n      opacity: 1 !important;\n      line-height: 60px !important;\n      padding-left: 15px !important; /* Adds a gap between the new icon box and the text */\n      flex: none !important;\n  }\n\n/* 1. THE MAIN BUTTON BOX */\n  .massive-switch2 .nrdb-switch {\n      display: flex !important;\n      align-items: center !important;\n      justify-content: center !important;\n      gap: 12px !important;\n      \n      /* THIS IS CRITICAL FOR THE HIT-BOX */\n      position: relative !important; \n      \n      height: 60px !important;\n      width: 100% !important;\n      \n      background-color: #d32f2f !important; \n      border-radius: 8px !important;\n      box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important;\n      \n      margin: 0 auto !important;\n      padding: 0 15px !important;\n      cursor: pointer !important;\n      transition: background-color 0.2s ease-in-out !important;\n  }\n\n  /* 2. DETECTING THE \"ON\" STATE */\n  .massive-switch2 .nrdb-switch:has(.text-green) {\n      background-color: #388e3c !important; \n  }\n\n  /* 3. THE TEXT LABEL */\n  .massive-switch2 .v-label {\n      color: #FFFFFF !important;\n      font-size: 22px !important;\n      opacity: 1 !important;\n      flex: none !important; \n      pointer-events: none !important;\n  }\n  /* 4. THE ICON BUTTON, HIT-BOX & ANTI-RIPPLE */\n  \n  /* The physical button properties */\n  .massive-switch2 .v-btn {\n      color: #FFFFFF !important; \n      width: auto !important;\n      height: auto !important;\n      overflow: visible !important; \n      position: static !important; \n      \n      /* Strips the blue/grey browser tap focus */\n      outline: none !important;\n      -webkit-tap-highlight-color: transparent !important;\n  }\n\n  /* The Stretched Hit-Box */\n  .massive-switch2 .v-btn::after {\n      content: \"\" !important;\n      position: absolute !important;\n      inset: 0 !important; \n      z-index: 99 !important; \n      cursor: pointer !important;\n  }\n\n  /* Target and destroy the injected ripple element */\n  .massive-switch2 .v-btn .v-ripple__container {\n      display: none !important;\n  }\n\n  .massive-switch2 .v-btn .v-icon {\n      font-size: 32px !important;\n  }\n  /* 5. CLEANUP VUETIFY ARTIFACTS */\n  .massive-switch2 .v-btn__overlay,\n  .massive-switch2 .v-btn__underlay {\n      display: none !important;\n  }\n</style>",
-        "storeOutMessages": true,
-        "passthru": true,
-        "resendOnRefresh": true,
-        "templateScope": "local",
-        "className": "",
-        "x": 430,
-        "y": 520,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "fd75fd6e5d8faf55",
-        "type": "ui-switch",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Lamp 1 Control",
-        "label": "Relay 1",
-        "group": "60183a643617e85c",
-        "order": 1,
-        "width": "6",
-        "height": "2",
-        "passthru": false,
-        "decouple": false,
-        "topic": "lamp1",
-        "topicType": "str",
-        "style": "",
-        "className": "massive-switch2",
-        "layout": "row-left",
-        "clickableArea": "line",
-        "onvalue": "1",
-        "onvalueType": "num",
-        "onicon": "lightbulb",
-        "oncolor": "green",
-        "offvalue": "0",
-        "offvalueType": "num",
-        "officon": "lightbulb-off",
-        "offcolor": "red",
-        "x": 780,
-        "y": 780,
-        "wires": [
-            [
-                "d8479aa44aa73a07"
-            ]
-        ]
-    },
-    {
-        "id": "334c1191f783211b",
-        "type": "ui-switch",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Lamp 3 Control",
-        "label": "Relay 3",
-        "group": "60183a643617e85c",
-        "order": 3,
-        "width": "6",
-        "height": "2",
-        "passthru": false,
-        "decouple": false,
-        "topic": "lamp3",
-        "topicType": "str",
-        "style": "",
-        "className": "massive-switch2",
-        "layout": "row-left",
-        "clickableArea": "line",
-        "onvalue": "1",
-        "onvalueType": "num",
-        "onicon": "lightbulb",
-        "oncolor": "green",
-        "offvalue": "0",
-        "offvalueType": "num",
-        "officon": "lightbulb-off",
-        "offcolor": "red",
-        "x": 780,
-        "y": 860,
-        "wires": [
-            [
-                "d8479aa44aa73a07"
-            ]
-        ]
-    },
-    {
-        "id": "a2369582361950ab",
-        "type": "ui-switch",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Lamp 2 Control",
-        "label": "Relay 2",
-        "group": "60183a643617e85c",
-        "order": 2,
-        "width": "6",
-        "height": "2",
-        "passthru": false,
-        "decouple": false,
-        "topic": "lamp2",
-        "topicType": "str",
-        "style": "",
-        "className": "massive-switch2",
-        "layout": "row-left",
-        "clickableArea": "line",
-        "onvalue": "1",
-        "onvalueType": "num",
-        "onicon": "lightbulb",
-        "oncolor": "green",
-        "offvalue": "0",
-        "offvalueType": "num",
-        "officon": "lightbulb-off",
-        "offcolor": "red",
-        "x": 780,
-        "y": 820,
-        "wires": [
-            [
-                "d8479aa44aa73a07"
-            ]
-        ]
-    },
-    {
-        "id": "0c6f7ff7c281a767",
-        "type": "ui-switch",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Lamp 4 Control",
-        "label": "Relay 4",
-        "group": "60183a643617e85c",
-        "order": 4,
-        "width": "6",
-        "height": "2",
-        "passthru": false,
-        "decouple": false,
-        "topic": "lamp4",
-        "topicType": "str",
-        "style": "",
-        "className": "massive-switch2",
-        "layout": "row-left",
-        "clickableArea": "line",
-        "onvalue": "1",
-        "onvalueType": "num",
-        "onicon": "lightbulb",
-        "oncolor": "green",
-        "offvalue": "0",
-        "offvalueType": "num",
-        "officon": "lightbulb-off",
-        "offcolor": "red",
-        "x": 780,
-        "y": 900,
-        "wires": [
-            [
-                "d8479aa44aa73a07"
-            ]
-        ]
-    },
-    {
-        "id": "b3dbdaa903905060",
-        "type": "ui-switch",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Lamp All Control",
-        "label": "Semua Lampu",
-        "group": "60183a643617e85c",
-        "order": 6,
-        "width": "6",
-        "height": "2",
-        "passthru": false,
-        "decouple": false,
-        "topic": "main_lamp",
-        "topicType": "str",
-        "style": "",
-        "className": "massive-switch2",
-        "layout": "row-left",
-        "clickableArea": "line",
-        "onvalue": "1",
-        "onvalueType": "num",
-        "onicon": "lightbulb",
-        "oncolor": "green",
-        "offvalue": "0",
-        "offvalueType": "num",
-        "officon": "lightbulb-off",
-        "offcolor": "red",
-        "x": 560,
-        "y": 840,
-        "wires": [
-            [
-                "fd75fd6e5d8faf55",
-                "334c1191f783211b",
-                "a2369582361950ab",
-                "0c6f7ff7c281a767",
-                "d8479aa44aa73a07"
-            ]
-        ]
-    },
-    {
-        "id": "db211d3695243dc4",
-        "type": "mqtt out",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/control/led",
-        "qos": "1",
-        "retain": "",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "3ea80e6b0f49fd5b",
-        "x": 720,
-        "y": 720,
-        "wires": []
-    },
-    {
-        "id": "22963327cd07a620",
-        "type": "mqtt out",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/control/ac",
-        "qos": "1",
-        "retain": "",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "3ea80e6b0f49fd5b",
-        "x": 1990,
-        "y": 780,
-        "wires": []
-    },
-    {
-        "id": "025dc00ce6945570",
-        "type": "mqtt in",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "name": "",
         "topic": "bridge/status",
         "qos": "0",
@@ -2123,14 +1196,14 @@
         "y": 180,
         "wires": [
             [
-                "2b1ace2f58a2d32e"
+                "db18c6dcc60375a8"
             ]
         ]
     },
     {
-        "id": "2b1ace2f58a2d32e",
+        "id": "db18c6dcc60375a8",
         "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
+        "z": "38555e5d51f8978d",
         "name": "Bridge Connection",
         "group": "0c3c5ebdba98837d",
         "order": 3,
@@ -2160,1442 +1233,122 @@
         "wires": []
     },
     {
-        "id": "1503f74614dba0ed",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "AC control",
-        "func": "let ac_state ;\nlet ac_temp ;\n\nflow.set (msg.topic, msg.payload);\nac_temp = flow.get(\"hvac_temp\")||18;\nac_state = flow.get(\"hvac_state\")||false;\n\nlet stateInt = ac_state ? 1 : 0;\n\nlet pp = stateInt === 1 ? \"01\" : \"00\";\nlet tt = String(ac_temp).padStart(2, '0');\nlet ff = \"00\";\nlet ss = \"00\";\nmsg.payload = `${pp}${tt}${ff}${ss}`;\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1770,
-        "y": 780,
-        "wires": [
-            [
-                "22963327cd07a620"
-            ]
-        ]
-    },
-    {
-        "id": "db844419bd09ee3f",
-        "type": "ui-switch",
-        "z": "5889d3dbc3b1abfc",
-        "name": "AC control",
-        "label": "On/Off",
-        "group": "5a9018f1b99440e2",
+        "id": "class_overview_template",
+        "type": "ui-template",
+        "z": "38555e5d51f8978d",
+        "group": "class_overview_group",
+        "name": "Classroom Overview Widget",
         "order": 1,
-        "width": "2",
-        "height": "1",
-        "passthru": false,
-        "decouple": false,
-        "topic": "hvac_state",
-        "topicType": "str",
-        "style": "",
-        "className": "massive-switch",
-        "layout": "row-spread",
-        "clickableArea": "switch",
-        "onvalue": "1",
-        "onvalueType": "num",
-        "onicon": "hvac",
-        "oncolor": "green",
-        "offvalue": "0",
-        "offvalueType": "num",
-        "officon": "hvac-off",
-        "offcolor": "red",
-        "x": 1570,
-        "y": 800,
+        "width": "12",
+        "height": "auto",
+        "format": "<template>\n  <div class=\"classrooms-container py-4\">\n    <!-- Grid of Classroom Cards -->\n    <v-row>\n      <v-col v-for=\"room in rooms\" :key=\"room.room\" cols=\"12\" sm=\"6\" md=\"4\">\n        <v-card class=\"room-card elevation-4 text-white\" :class=\"{'inactive-card': room.status === -1}\">\n          <!-- Card Header -->\n          <div class=\"card-header d-flex justify-between align-center px-4 py-3\">\n            <span class=\"room-title font-weight-bold text-h5\">{{ room.room }}</span>\n            <div class=\"status-indicator d-flex align-center\">\n              <span class=\"status-dot mr-2\" :class=\"statusColorClass(room.status)\"></span>\n              <span class=\"text-caption text-grey-lighten-1\">{{ statusText(room.status) }}</span>\n            </div>\n          </div>\n\n          <!-- Card Body Sensors -->\n          <v-card-text class=\"px-4 py-3\">\n            <v-row no-gutters class=\"mb-4\">\n              <v-col cols=\"4\" class=\"text-center border-right-sep\">\n                <v-icon color=\"orange-lighten-2\" size=\"large\">mdi-thermometer</v-icon>\n                <div class=\"text-h6 mt-1 font-weight-medium\">{{ room.temp }}°C</div>\n                <div class=\"text-caption text-grey-lighten-1\">Temp</div>\n              </v-col>\n              <v-col cols=\"4\" class=\"text-center border-right-sep\">\n                <v-icon color=\"blue-lighten-2\" size=\"large\">mdi-water-percent</v-icon>\n                <div class=\"text-h6 mt-1 font-weight-medium\">{{ room.lux }} lx</div>\n                <div class=\"text-caption text-grey-lighten-1\">Lux</div>\n              </v-col>\n              <v-col cols=\"4\" class=\"text-center\">\n                <v-icon color=\"green-lighten-2\" size=\"large\">mdi-molecule-co2</v-icon>\n                <div class=\"text-h6 mt-1 font-weight-medium\">{{ room.co2 }} ppm</div>\n                <div class=\"text-caption text-grey-lighten-1\">CO2</div>\n              </v-col>\n            </v-row>\n\n            <!-- Device Status Icons -->\n            <div class=\"d-flex justify-space-around py-2 bg-device-panel rounded\">\n              <!-- Lamp -->\n              <div class=\"text-center\">\n                <v-icon :color=\"deviceColor(room.led_data)\" size=\"large\">mdi-lightbulb</v-icon>\n                <div class=\"text-caption mt-1 font-weight-bold\">Lamp</div>\n              </div>\n              <!-- AC -->\n              <div class=\"text-center\">\n                <v-icon :color=\"deviceColor(room.ac_data)\" size=\"large\">mdi-fan</v-icon>\n                <div class=\"text-caption mt-1 font-weight-bold\">AC</div>\n              </div>\n              <!-- Projector -->\n              <div class=\"text-center\">\n                <v-icon :color=\"deviceColor(room.projector_data)\" size=\"large\">mdi-projector</v-icon>\n                <div class=\"text-caption mt-1 font-weight-bold\">Proj</div>\n              </div>\n            </div>\n          </v-card-text>\n\n          <!-- Card Actions -->\n          <v-card-actions class=\"px-4 pb-4\">\n            <v-btn block color=\"teal-accent-3\" variant=\"elevated\" @click=\"openDetails(room)\">\n              Control & Details\n            </v-btn>\n          </v-card-actions>\n        </v-card>\n      </v-col>\n    </v-row>\n\n    <!-- Details and Control Dialog -->\n    <v-dialog v-model=\"dialog\" max-width=\"700\" persistent>\n      <v-card class=\"details-dialog bg-dialog text-white\" v-if=\"selectedRoom\">\n        <v-card-title class=\"d-flex justify-between align-center px-6 py-4 border-bottom-sep\">\n          <span class=\"text-h5 font-weight-bold\">Classroom {{ selectedRoom.room }} Controls</span>\n          <v-btn icon=\"mdi-close\" variant=\"text\" color=\"white\" @click=\"closeDetails\"></v-btn>\n        </v-card-title>\n\n        <v-card-text class=\"px-6 py-4\">\n          <!-- Control Switches Section -->\n          <div class=\"text-h6 font-weight-bold mb-3 text-teal-accent-3\">Control Center</div>\n          \n          <v-row class=\"mb-4\">\n            <!-- Lamp Control -->\n            <v-col cols=\"12\" sm=\"6\">\n              <v-card class=\"control-box pa-3 d-flex align-center justify-between\" variant=\"outlined\">\n                <div class=\"d-flex align-center\">\n                  <v-icon color=\"orange-lighten-2\" class=\"mr-3\" size=\"large\">mdi-lightbulb</v-icon>\n                  <div>\n                    <div class=\"font-weight-medium\">Lamp Control</div>\n                    <div class=\"text-caption text-grey\">All room lights</div>\n                  </div>\n                </div>\n                <v-switch v-model=\"controls.led\" color=\"green\" hide-details inset @change=\"sendControl('led', controls.led ? 1 : 0)\"></v-switch>\n              </v-card>\n            </v-col>\n\n            <!-- Projector Control -->\n            <v-col cols=\"12\" sm=\"6\">\n              <v-card class=\"control-box pa-3 d-flex align-center justify-between\" variant=\"outlined\">\n                <div class=\"d-flex align-center\">\n                  <v-icon color=\"blue-lighten-2\" class=\"mr-3\" size=\"large\">mdi-projector</v-icon>\n                  <div>\n                    <div class=\"font-weight-medium\">Projector Control</div>\n                    <div class=\"text-caption text-grey\">Display screen power</div>\n                  </div>\n                </div>\n                <v-switch v-model=\"controls.projector\" color=\"green\" hide-details inset @change=\"sendControl('projector', controls.projector ? 1 : 0)\"></v-switch>\n              </v-card>\n            </v-col>\n          </v-row>\n\n          <v-row class=\"mb-6\">\n            <!-- AC Control & Temp Slider -->\n            <v-col cols=\"12\">\n              <v-card class=\"control-box pa-4\" variant=\"outlined\">\n                <div class=\"d-flex align-center justify-between mb-3\">\n                  <div class=\"d-flex align-center\">\n                    <v-icon color=\"cyan-lighten-2\" class=\"mr-3\" size=\"large\">mdi-fan</v-icon>\n                    <div>\n                      <div class=\"font-weight-medium\">Air Conditioner</div>\n                      <div class=\"text-caption text-grey\">AC power state</div>\n                    </div>\n                  </div>\n                  <v-switch v-model=\"controls.ac\" color=\"green\" hide-details inset @change=\"sendControl('ac', controls.ac ? 1 : 0)\"></v-switch>\n                </div>\n                \n                <div v-if=\"controls.ac\" class=\"pt-2 px-2\">\n                  <div class=\"d-flex justify-between text-caption text-grey-lighten-1 mb-2\">\n                    <span>Target Temperature</span>\n                    <span class=\"font-weight-bold text-white text-subtitle-1\">{{ controls.ac_temp }}°C</span>\n                  </div>\n                  <v-slider v-model=\"controls.ac_temp\" min=\"16\" max=\"30\" step=\"1\" thumb-label color=\"cyan\" track-color=\"grey\" @end=\"sendControl('ac_temp', controls.ac_temp)\"></v-slider>\n                </div>\n              </v-card>\n            </v-col>\n          </v-row>\n\n          <!-- History Charts Section -->\n          <div class=\"d-flex justify-between align-center mb-3\">\n            <div class=\"text-h6 font-weight-bold text-teal-accent-3\">Historical Trends</div>\n            <!-- Range Selection Controls -->\n            <div style=\"width: 200px;\">\n              <v-select v-model=\"historyRange\" :items=\"rangeOptions\" label=\"Time Range\" density=\"compact\" hide-details variant=\"outlined\" color=\"teal-accent-3\" @update:model-value=\"requestHistory\"></v-select>\n            </div>\n          </div>\n\n          <!-- Custom range datetime inputs -->\n          <v-row v-if=\"historyRange === 'custom'\" class=\"mb-4 align-center\">\n            <v-col cols=\"12\" sm=\"6\">\n              <v-text-field v-model=\"customStart\" type=\"datetime-local\" label=\"Start Time\" density=\"compact\" hide-details variant=\"outlined\" color=\"teal-accent-3\" @change=\"requestHistory\"></v-text-field>\n            </v-col>\n            <v-col cols=\"12\" sm=\"6\">\n              <v-text-field v-model=\"customEnd\" type=\"datetime-local\" label=\"End Time\" density=\"compact\" hide-details variant=\"outlined\" color=\"teal-accent-3\" @change=\"requestHistory\"></v-text-field>\n            </v-col>\n          </v-row>\n          \n          <v-tabs v-model=\"chartTab\" color=\"teal-accent-3\" class=\"mb-4\">\n            <v-tab value=\"temp\">Temperature</v-tab>\n            <v-tab value=\"lux\">Lux</v-tab>\n            <v-tab value=\"co2\">CO2</v-tab>\n          </v-tabs>\n\n          <v-window v-model=\"chartTab\">\n            <v-window-item value=\"temp\">\n              <div class=\"chart-container py-2 text-center\" style=\"position: relative;\">\n                <svg v-if=\"history.temp.length\" viewBox=\"0 0 500 150\" class=\"svg-chart\">\n                  <!-- Grid & Axes -->\n                  <line x1=\"50\" y1=\"15\" x2=\"50\" y2=\"120\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"1\"></line>\n                  <line x1=\"50\" y1=\"120\" x2=\"480\" y2=\"120\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"1\"></line>\n                  \n                  <!-- Y Axis Labels -->\n                  <text x=\"45\" y=\"20\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('temp', 'max') }}</text>\n                  <text x=\"45\" y=\"72.5\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('temp', 'mid') }}</text>\n                  <text x=\"45\" y=\"125\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('temp', 'min') }}</text>\n                  \n                  <!-- X Axis Time Labels -->\n                  <text x=\"50\" y=\"140\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"start\">{{ getXTimeLabel('start') }}</text>\n                  <text x=\"480\" y=\"140\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getXTimeLabel('end') }}</text>\n                  \n                  <!-- Line Path -->\n                  <path :d=\"getPath(history.temp)\" fill=\"none\" stroke=\"#ffb74d\" stroke-width=\"2.5\"></path>\n                  \n                  <!-- Interactive Hover Points -->\n                  <circle v-for=\"(p, idx) in getPoints(history.temp)\" :key=\"idx\" :cx=\"p.x\" :cy=\"p.y\" r=\"4\" fill=\"#ffb74d\"></circle>\n                  <circle v-for=\"(p, idx) in getPoints(history.temp)\" :key=\"'h-'+idx\" :cx=\"p.x\" :cy=\"p.y\" r=\"14\" fill=\"transparent\" style=\"cursor: pointer;\" @mouseover=\"setHoverPoint(p, 'C')\" @mouseleave=\"clearHoverPoint\"></circle>\n                </svg>\n                <div v-else class=\"py-10 text-grey text-caption\">No recent data available</div>\n                \n                <!-- Chart Hover Tooltip -->\n                <div v-if=\"hoverPoint\" class=\"chart-tooltip text-caption\" :style=\"{ left: hoverPoint.x + 'px', top: (hoverPoint.y - 45) + 'px' }\">\n                  <strong>{{ hoverPoint.value }} {{ hoverPoint.unit }}</strong><br>\n                  <span class=\"text-grey-lighten-1\">{{ formatTime(hoverPoint.time) }}</span>\n                </div>\n              </div>\n            </v-window-item>\n            \n            <v-window-item value=\"lux\">\n              <div class=\"chart-container py-2 text-center\" style=\"position: relative;\">\n                <svg v-if=\"history.lux.length\" viewBox=\"0 0 500 150\" class=\"svg-chart\">\n                  <!-- Grid & Axes -->\n                  <line x1=\"50\" y1=\"15\" x2=\"50\" y2=\"120\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"1\"></line>\n                  <line x1=\"50\" y1=\"120\" x2=\"480\" y2=\"120\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"1\"></line>\n                  \n                  <!-- Y Axis Labels -->\n                  <text x=\"45\" y=\"20\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('lux', 'max') }}</text>\n                  <text x=\"45\" y=\"72.5\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('lux', 'mid') }}</text>\n                  <text x=\"45\" y=\"125\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('lux', 'min') }}</text>\n                  \n                  <!-- X Axis Time Labels -->\n                  <text x=\"50\" y=\"140\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"start\">{{ getXTimeLabel('start') }}</text>\n                  <text x=\"480\" y=\"140\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getXTimeLabel('end') }}</text>\n                  \n                  <!-- Line Path -->\n                  <path :d=\"getPath(history.lux)\" fill=\"none\" stroke=\"#64b5f6\" stroke-width=\"2.5\"></path>\n                  \n                  <!-- Interactive Hover Points -->\n                  <circle v-for=\"(p, idx) in getPoints(history.lux)\" :key=\"idx\" :cx=\"p.x\" :cy=\"p.y\" r=\"4\" fill=\"#64b5f6\"></circle>\n                  <circle v-for=\"(p, idx) in getPoints(history.lux)\" :key=\"'h-'+idx\" :cx=\"p.x\" :cy=\"p.y\" r=\"14\" fill=\"transparent\" style=\"cursor: pointer;\" @mouseover=\"setHoverPoint(p, 'Lx')\" @mouseleave=\"clearHoverPoint\"></circle>\n                </svg>\n                <div v-else class=\"py-10 text-grey text-caption\">No recent data available</div>\n                \n                <!-- Chart Hover Tooltip -->\n                <div v-if=\"hoverPoint\" class=\"chart-tooltip text-caption\" :style=\"{ left: hoverPoint.x + 'px', top: (hoverPoint.y - 45) + 'px' }\">\n                  <strong>{{ hoverPoint.value }} {{ hoverPoint.unit }}</strong><br>\n                  <span class=\"text-grey-lighten-1\">{{ formatTime(hoverPoint.time) }}</span>\n                </div>\n              </div>\n            </v-window-item>\n            \n            <v-window-item value=\"co2\">\n              <div class=\"chart-container py-2 text-center\" style=\"position: relative;\">\n                <svg v-if=\"history.co2.length\" viewBox=\"0 0 500 150\" class=\"svg-chart\">\n                  <!-- Grid & Axes -->\n                  <line x1=\"50\" y1=\"15\" x2=\"50\" y2=\"120\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"1\"></line>\n                  <line x1=\"50\" y1=\"120\" x2=\"480\" y2=\"120\" stroke=\"rgba(255,255,255,0.1)\" stroke-width=\"1\"></line>\n                  \n                  <!-- Y Axis Labels -->\n                  <text x=\"45\" y=\"20\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('co2', 'max') }}</text>\n                  <text x=\"45\" y=\"72.5\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('co2', 'mid') }}</text>\n                  <text x=\"45\" y=\"125\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getYLabel('co2', 'min') }}</text>\n                  \n                  <!-- X Axis Time Labels -->\n                  <text x=\"50\" y=\"140\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"start\">{{ getXTimeLabel('start') }}</text>\n                  <text x=\"480\" y=\"140\" fill=\"rgba(255,255,255,0.5)\" font-size=\"10\" text-anchor=\"end\">{{ getXTimeLabel('end') }}</text>\n                  \n                  <!-- Line Path -->\n                  <path :d=\"getPath(history.co2)\" fill=\"none\" stroke=\"#81c784\" stroke-width=\"2.5\"></path>\n                  \n                  <!-- Interactive Hover Points -->\n                  <circle v-for=\"(p, idx) in getPoints(history.co2)\" :key=\"idx\" :cx=\"p.x\" :cy=\"p.y\" r=\"4\" fill=\"#81c784\"></circle>\n                  <circle v-for=\"(p, idx) in getPoints(history.co2)\" :key=\"'h-'+idx\" :cx=\"p.x\" :cy=\"p.y\" r=\"14\" fill=\"transparent\" style=\"cursor: pointer;\" @mouseover=\"setHoverPoint(p, 'ppm')\" @mouseleave=\"clearHoverPoint\"></circle>\n                </svg>\n                <div v-else class=\"py-10 text-grey text-caption\">No recent data available</div>\n                \n                <!-- Chart Hover Tooltip -->\n                <div v-if=\"hoverPoint\" class=\"chart-tooltip text-caption\" :style=\"{ left: hoverPoint.x + 'px', top: (hoverPoint.y - 45) + 'px' }\">\n                  <strong>{{ hoverPoint.value }} {{ hoverPoint.unit }}</strong><br>\n                  <span class=\"text-grey-lighten-1\">{{ formatTime(hoverPoint.time) }}</span>\n                </div>\n              </div>\n            </v-window-item>\n          </v-window>\n        </v-card-text>\n      </v-card>\n    </v-dialog>\n  </div>\n</template>\n\n<script>\nexport default {\n  data() {\n    return {\n      rooms: [],\n      dialog: false,\n      selectedRoom: null,\n      chartTab: 'temp',\n      controls: {\n        led: false,\n        ac: false,\n        ac_temp: 24,\n        projector: false\n      },\n      history: {\n        temp: [],\n        lux: [],\n        co2: []\n      },\n      historyRange: '24h',\n      customStart: '',\n      customEnd: '',\n      hoverPoint: null,\n      rangeOptions: [\n        { title: 'Last Day', value: '24h' },\n        { title: 'Last Week', value: '7d' },\n        { title: 'Last Month', value: '30d' },\n        { title: 'Custom Range...', value: 'custom' }\n      ]\n    }\n  },\n  watch: {\n    msg: {\n      handler(newMsg) {\n        if (!newMsg) return;\n        \n        // Handle periodic rooms update\n        if (newMsg.topic === 'rooms' && Array.isArray(newMsg.payload)) {\n          this.rooms = newMsg.payload;\n          // Sync selected room data if it is open\n          if (this.selectedRoom) {\n            const updated = this.rooms.find(r => r.room === this.selectedRoom.room);\n            if (updated) {\n              this.selectedRoom = updated;\n            }\n          }\n        }\n        \n        // Handle history update\n        if (newMsg.topic === 'history' && newMsg.payload) {\n          if (this.selectedRoom && newMsg.room === this.selectedRoom.room) {\n            this.history = newMsg.payload;\n          }\n        }\n      },\n      deep: true,\n      immediate: true\n    }\n  },\n  methods: {\n    statusColorClass(status) {\n      if (status === 1) return 'bg-green';\n      if (status === 0) return 'bg-red';\n      return 'bg-grey';\n    },\n    statusText(status) {\n      if (status === 1) return 'Active';\n      if (status === 0) return 'Empty';\n      return 'Offline';\n    },\n    deviceColor(state) {\n      if (state === 1) return 'green-lighten-1';\n      if (state === 0) return 'red-lighten-1';\n      return 'grey-lighten-1';\n    },\n    openDetails(room) {\n      this.selectedRoom = room;\n      this.dialog = true;\n      \n      // Initialize controls state from selected room values\n      this.controls.led = room.led_data === 1;\n      this.controls.ac = room.ac_data === 1;\n      this.controls.projector = room.projector_data === 1;\n      this.controls.ac_temp = room.ac_temp || 24;\n      \n      // Load standard history\n      this.historyRange = '24h';\n      \n      // Set default values for custom range (last 24h)\n      const now = new Date();\n      const yesterday = new Date(Date.now() - 24*3600*1000);\n      this.customStart = this.formatDatetimeLocal(yesterday);\n      this.customEnd = this.formatDatetimeLocal(now);\n      \n      this.requestHistory();\n    },\n    closeDetails() {\n      this.dialog = false;\n      this.selectedRoom = null;\n    },\n    formatDatetimeLocal(d) {\n      const pad = (num) => String(num).padStart(2, '0');\n      return d.getFullYear() + '-' +\n        pad(d.getMonth() + 1) + '-' +\n        pad(d.getDate()) + 'T' +\n        pad(d.getHours()) + ':' +\n        pad(d.getMinutes());\n    },\n    requestHistory() {\n      if (!this.selectedRoom) return;\n      this.history = { temp: [], lux: [], co2: [] };\n      \n      let range = this.historyRange;\n      let start = null;\n      let stop = null;\n      \n      if (range === 'custom') {\n        start = this.customStart;\n        stop = this.customEnd;\n      }\n      \n      this.send({\n        topic: 'get_history',\n        payload: {\n          room: this.selectedRoom.room,\n          range: range,\n          start: start,\n          stop: stop\n        }\n      });\n    },\n    sendControl(device, value) {\n      this.send({\n        topic: 'control',\n        payload: {\n          room: this.selectedRoom.room,\n          device: device,\n          value: value\n        }\n      });\n    },\n    getYLabel(field, position) {\n      const data = this.history[field];\n      if (!data || data.length === 0) return '';\n      const vals = data.map(p => p.y);\n      const minVal = Math.min(...vals);\n      const maxVal = Math.max(...vals);\n      \n      let val = 0;\n      if (position === 'max') val = maxVal;\n      else if (position === 'min') val = minVal;\n      else val = (minVal + maxVal) / 2;\n      \n      let unit = '';\n      if (field === 'temp') unit = 'C';\n      else if (field === 'lux') unit = 'Lx';\n      else if (field === 'co2') unit = 'ppm';\n      \n      return val.toFixed(1) + ' ' + unit;\n    },\n    getXTimeLabel(position) {\n      const activeData = this.history[this.chartTab];\n      if (!activeData || activeData.length === 0) return '';\n      \n      let t = 0;\n      if (position === 'start') {\n        t = activeData[0].x;\n      } else {\n        t = activeData[activeData.length - 1].x;\n      }\n      \n      return this.formatTime(t);\n    },\n    formatTime(timestamp) {\n      const d = new Date(timestamp);\n      const pad = (num) => String(num).padStart(2, '0');\n      return pad(d.getHours()) + ':' + pad(d.getMinutes());\n    },\n    getPath(data) {\n      const points = this.getPoints(data);\n      if (points.length < 2) return '';\n      return 'M ' + points.map(p => p.x + ',' + p.y).join(' L ');\n    },\n    getPoints(data) {\n      if (!data || data.length === 0) return [];\n      \n      const minX = Math.min(...data.map(p => p.x));\n      const maxX = Math.max(...data.map(p => p.x));\n      const minY = Math.min(...data.map(p => p.y));\n      const maxY = Math.max(...data.map(p => p.y));\n      \n      const width = 500;\n      const height = 130;\n      \n      // X range: 50 to 480\n      // Y range: 15 to 120\n      const startX = 50;\n      const endX = 480;\n      const startY = 15;\n      const endY = 120;\n      \n      return data.map(p => {\n        const x = startX + ((p.x - minX) / (maxX - minX || 1)) * (endX - startX);\n        const y = endY - ((p.y - minY) / (maxY - minY || 1)) * (endY - startY);\n        return {\n          x: x,\n          y: y,\n          value: p.y.toFixed(1),\n          time: p.x\n        };\n      });\n    },\n    setHoverPoint(p, unit) {\n      this.hoverPoint = {\n        x: p.x,\n        y: p.y,\n        value: p.value,\n        time: p.time,\n        unit: unit\n      };\n    },\n    clearHoverPoint() {\n      this.hoverPoint = null;\n    }\n  }\n}\n</script>\n\n<style>\n.classrooms-container {\n  font-family: 'Outfit', 'Inter', sans-serif;\n}\n.room-card {\n  background: rgba(22, 32, 51, 0.75) !important;\n  backdrop-filter: blur(10px);\n  border: 1px solid rgba(255, 255, 255, 0.08) !important;\n  border-radius: 12px !important;\n  transition: transform 0.2s ease, border-color 0.2s ease;\n}\n.room-card:hover {\n  transform: translateY(-4px);\n  border-color: rgba(31, 199, 148, 0.4) !important;\n}\n.inactive-card {\n  opacity: 0.75;\n}\n.card-header {\n  border-bottom: 1px solid rgba(255, 255, 255, 0.08);\n}\n.status-dot {\n  width: 10px;\n  height: 10px;\n  border-radius: 50%;\n  display: inline-block;\n}\n.bg-green {\n  background-color: #4caf50 !important;\n  box-shadow: 0 0 8px #4caf50;\n}\n.bg-red {\n  background-color: #f44336 !important;\n  box-shadow: 0 0 8px #f44336;\n}\n.bg-grey {\n  background-color: #9e9e9e !important;\n}\n.border-right-sep {\n  border-right: 1px solid rgba(255, 255, 255, 0.08);\n}\n.bg-device-panel {\n  background-color: rgba(16, 25, 42, 0.6);\n  border: 1px solid rgba(255, 255, 255, 0.05);\n}\n.bg-dialog {\n  background-color: #10192a !important;\n  border: 1px solid rgba(255, 255, 255, 0.1) !important;\n  border-radius: 16px !important;\n}\n.border-bottom-sep {\n  border-bottom: 1px solid rgba(255, 255, 255, 0.08);\n}\n.control-box {\n  background-color: rgba(22, 32, 51, 0.5) !important;\n  border-color: rgba(255, 255, 255, 0.08) !important;\n  border-radius: 8px !important;\n}\n.chart-container {\n  background-color: rgba(16, 25, 42, 0.8);\n  border-radius: 8px;\n  border: 1px solid rgba(255, 255, 255, 0.05);\n}\n.svg-chart {\n  width: 100%;\n  height: 150px;\n  overflow: visible;\n}\n.chart-point {\n  cursor: pointer;\n  transition: r 0.1s ease;\n}\n.chart-point:hover {\n  r: 6px;\n}\n.chart-tooltip {\n  position: absolute;\n  background: rgba(0, 0, 0, 0.85);\n  border: 1px solid rgba(255,255,255,0.15);\n  padding: 4px 8px;\n  border-radius: 4px;\n  color: white;\n  pointer-events: none;\n  transform: translate(-50%, -100%);\n  z-index: 10;\n  box-shadow: 0 4px 6px rgba(0,0,0,0.3);\n}\n</style>",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 800,
+        "y": 280,
         "wires": [
             [
-                "1503f74614dba0ed"
+                "command_history_router_fn"
             ]
         ]
     },
     {
-        "id": "fd9779ab6e15ef97",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "2e5908390e0c39bd",
-        "order": 4,
-        "width": "3",
-        "height": "1",
-        "name": "Light indoor",
-        "label": "Kecerahan dalam:",
-        "format": "{{msg.payload}}",
-        "layout": "row-left",
-        "style": true,
-        "font": "",
-        "fontSize": "25",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "$round(payload.luxAvg, 1) & \" Lx\"",
-        "valueType": "jsonata",
-        "x": 990,
-        "y": 460,
-        "wires": []
+        "id": "telemetry_poll_inject",
+        "type": "inject",
+        "z": "38555e5d51f8978d",
+        "name": "Every 5s",
+        "props": [],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 140,
+        "y": 280,
+        "wires": [
+            [
+                "telemetry_poll_influx"
+            ]
+        ]
     },
     {
-        "id": "f83eacb247b8465e",
-        "type": "ui-text",
-        "z": "5889d3dbc3b1abfc",
-        "group": "2e5908390e0c39bd",
-        "order": 5,
-        "width": "3",
-        "height": "1",
-        "name": "Light outdoor",
-        "label": "Kecerahan luar:",
-        "format": "{{msg.payload}}",
-        "layout": "row-left",
-        "style": true,
-        "font": "",
-        "fontSize": "25",
-        "color": "#ffffff",
-        "wrapText": false,
-        "className": "",
-        "value": "$round(payload.luxOut, 1) & \" Lx\"",
-        "valueType": "jsonata",
-        "x": 1170,
-        "y": 460,
-        "wires": []
+        "id": "telemetry_poll_influx",
+        "type": "influxdb in",
+        "z": "38555e5d51f8978d",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Get Latest Telemetry",
+        "query": "from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"classroom\" or r._measurement == \"classroom_control\")\n  |> last()",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 340,
+        "y": 280,
+        "wires": [
+            [
+                "telemetry_process_fn"
+            ]
+        ]
     },
     {
-        "id": "d3a5e18d1d977dc2",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Projector status",
-        "group": "81517c8bc0431790",
-        "order": 3,
-        "width": "3",
-        "height": "1",
-        "label": "Status Proyektor",
-        "labelPlacement": "left",
-        "labelAlignment": "flex-end",
-        "states": [
-            {
-                "value": "1",
-                "valueType": "num",
-                "color": "#ff8000"
-            },
-            {
-                "value": "2",
-                "valueType": "num",
-                "color": "#00ff00"
-            },
-            {
-                "value": "3",
-                "valueType": "num",
-                "color": "#ff0000"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "square",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 1400,
-        "y": 600,
-        "wires": []
-    },
-    {
-        "id": "86acc8b103ecf40e",
+        "id": "telemetry_process_fn",
         "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Parse and separate data",
-        "func": "// Get the field name from topic (e.g. \"temp\", \"co2\", \"lux\", \"human\", etc.)\nlet parts = msg.topic.split(\"/\");\nlet field = parts[parts.length - 1];\n\n// Retrieve existing telemetry object from flow context, or initialize it\nlet telemetry = flow.get(\"telemetry\") || {\n    temp1: 0, temp2: 0, temp3: 0, temp4: 0,\n    co: 0,\n    humid1: 0, humid2: 0, humid3: 0, humid4: 0,\n    lux1: 0, lux2: 0, lux3: 0, lux4: 0,\n    luxProjector: 0,\n    luxOut: 0,\n    isOccupied: 0,\n    tempAvg: 0,\n    humAvg: 0,\n    luxAvg: 0\n};\n\nlet val = msg.payload;\n\nif (field === \"temp\") {\n    let t = parseFloat(val) || 0;\n    telemetry.temp1 = t;\n    telemetry.temp2 = t;\n    telemetry.temp3 = t;\n    telemetry.temp4 = t;\n    telemetry.tempAvg = t;\n} else if (field === \"co2\") {\n    // Map CO2 to the dashboard's CO (co) field\n    telemetry.co = parseFloat(val) || 0;\n} else if (field === \"lux\") {\n    let l = parseInt(val, 10) || 0;\n    telemetry.lux1 = l;\n    telemetry.lux2 = l;\n    telemetry.lux3 = l;\n    telemetry.lux4 = l;\n    telemetry.luxAvg = l;\n} else if (field === \"human\") {\n    telemetry.isOccupied = (parseInt(val, 10) === 1) ? 1 : 0;\n}\n\n// Store the updated telemetry back\nflow.set(\"telemetry\", telemetry);\n\n// Pass the telemetry payload to the dashboard widgets\nmsg.payload = telemetry;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 850,
-        "y": 940,
-        "wires": [
-            [
-                "0a28ba951a4430e3",
-                "79e0e59b84d5f3ea",
-                "0fe7e0a6930207ec",
-                "69f6e9379aa418a3",
-                "f83eacb247b8465e",
-                "5af6816762c39e22",
-                "8574496931873966",
-                "f74d2dd2865cc557",
-                "e415feaa8b78748f",
-                "928e824f2e9ec1f9",
-                "d692c88f165f22ce",
-                "7f0e7e17ac49ce85",
-                "93e79997d9ce32d3",
-                "6e340af71163af8b",
-                "93ab8466d962d654",
-                "b41e5239e651c500",
-                "af312c016f159a72",
-                "b1ac9c981b1fde94",
-                "7d4235c382958fad",
-                "c9b0561d57f5df11",
-                "d8cbd46bda40a650",
-                "7bf888ac6c7b2eeb",
-                "fd9779ab6e15ef97",
-                "fbf8e8eec11b018c",
-                "91df98e4f904db2e",
-                "dc0b60b129d1a20a"
-            ]
-        ]
-    },
-    {
-        "id": "0a28ba951a4430e3",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "b683be746b7871c8",
-        "name": "tempAvg",
-        "label": "AVG Temperature",
-        "order": 2,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.tempAvg",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1140,
-        "y": 940,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "f74d2dd2865cc557",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "b683be746b7871c8",
-        "name": "temp1",
-        "label": "Temperature 1",
-        "order": 3,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.temp1",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1130,
-        "y": 980,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "e415feaa8b78748f",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "b683be746b7871c8",
-        "name": "temp2",
-        "label": "Temperature 2",
-        "order": 4,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.temp2",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1130,
-        "y": 1020,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "928e824f2e9ec1f9",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "b683be746b7871c8",
-        "name": "temp3",
-        "label": "Temperature 3",
-        "order": 5,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.temp3",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1130,
-        "y": 1060,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "d692c88f165f22ce",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "b683be746b7871c8",
-        "name": "temp4",
-        "label": "Temperature 4",
-        "order": 6,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.temp4",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1130,
-        "y": 1100,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "7f0e7e17ac49ce85",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "a0d3c1c196448c80",
-        "name": "humAvg",
-        "label": "AVG Humidity",
-        "order": 2,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.humAvg",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1400,
-        "y": 940,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "93e79997d9ce32d3",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "a0d3c1c196448c80",
-        "name": "hum1",
-        "label": "Humidity 1",
-        "order": 3,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.humid1",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1390,
-        "y": 980,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "6e340af71163af8b",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "a0d3c1c196448c80",
-        "name": "hum2",
-        "label": "Humidity 2",
-        "order": 4,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.humid2",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1390,
-        "y": 1020,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "93ab8466d962d654",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "a0d3c1c196448c80",
-        "name": "hum3",
-        "label": "Humidity 3",
-        "order": 5,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.humid3",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1390,
-        "y": 1060,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "b41e5239e651c500",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "a0d3c1c196448c80",
-        "name": "hum4",
-        "label": "Humidity 4",
-        "order": 6,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.humid4",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1390,
-        "y": 1100,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "af312c016f159a72",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "fd8788b87c387cae",
-        "name": "luxAvg",
-        "label": "AVG Lux",
-        "order": 2,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.luxAvg",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1610,
-        "y": 940,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "b1ac9c981b1fde94",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "fd8788b87c387cae",
-        "name": "lux1",
-        "label": "Lux 1",
-        "order": 3,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.lux1",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1610,
-        "y": 980,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "7d4235c382958fad",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "fd8788b87c387cae",
-        "name": "lux2",
-        "label": "Lux 2",
-        "order": 4,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.lux2",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1610,
-        "y": 1020,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "c9b0561d57f5df11",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "fd8788b87c387cae",
-        "name": "lux3",
-        "label": "Lux 3",
-        "order": 5,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.lux3",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1610,
-        "y": 1060,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "d8cbd46bda40a650",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "fd8788b87c387cae",
-        "name": "lux4",
-        "label": "Lux 4",
-        "order": 6,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.lux4",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1610,
-        "y": 1100,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "7bf888ac6c7b2eeb",
-        "type": "change",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "payload.isOccupied",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1280,
-        "y": 380,
-        "wires": [
-            [
-                "ae8ca378e3a0cdb0"
-            ]
-        ]
-    },
-    {
-        "id": "229f141ffac38ceb",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "projector checker",
-        "func": "// 1. Fetch the physical reality from the main telemetry vault\nlet currentLux = flow.get(\"currentProjectorLux\") || 0;\nlet targetState = flow.get(\"projectorTargetState\");\nlet threshold = 300;\n\nlet msgLed = {};\nlet msgUnlock = { enabled: true,}; \n\nif (targetState === 1)\n{\n    if (currentLux >= threshold) \n    {\n        msgLed.payload = 2;\n        flow.set(\"projectorCondition\", 1);\n        msgUnlock.payload = 1; \n    } \n    else \n    {\n        msgLed.payload = 3;\n        flow.set(\"projectorCondition\", 0);\n        msgUnlock.payload = 0;\n    }\n}\nelse\n{\n    if (currentLux<threshold)\n    {\n        msgLed.payload = 0;\n        flow.set(\"projectorCondition\", 1);\n        msgUnlock.payload = 0;\n    }\n    else\n    {\n        msgLed.payload = 3;\n        flow.set(\"projectorCondition\", 0);\n        msgUnlock.payload = 1;\n    }\n}\n\nflow.set(\"projectorBooting\", false);\nflow.set(\"blockEchoProjector\", true);\n\nreturn [msgLed, msgUnlock];",
+        "z": "38555e5d51f8978d",
+        "name": "Process Telemetry",
+        "func": "let rooms = {};\nlet now = Date.now();\n\nif (!Array.isArray(msg.payload)) {\n    return null;\n}\n\nmsg.payload.forEach(row => {\n    let room = row.room;\n    if (!room) return;\n    \n    if (!rooms[room]) {\n        rooms[room] = {\n            room: room,\n            lastSeen: 0,\n            temp: \"-\",\n            lux: \"-\",\n            co2: \"-\",\n            led_data: 0,\n            ac_data: 0,\n            projector_data: 0,\n            status: 0,\n            ac_temp: 24\n        };\n    }\n    \n    let field = row._field;\n    let val = row._value;\n    let time = new Date(row._time).getTime();\n    \n    if (time > rooms[room].lastSeen) {\n        rooms[room].lastSeen = time;\n    }\n    \n    if (field === \"temp\" || field === \"temperature\") {\n        rooms[room].temp = parseFloat(val).toFixed(1);\n    } else if (field === \"lux\") {\n        rooms[room].lux = val;\n    } else if (field === \"co2\") {\n        rooms[room].co2 = val;\n    } else if (field === \"led_data\") {\n        rooms[room].led_data = parseInt(val, 10);\n    } else if (field === \"ac_data\") {\n        rooms[room].ac_data = parseInt(val, 10);\n    } else if (field === \"projector_data\") {\n        rooms[room].projector_data = parseInt(val, 10);\n    } else if (field === \"active\") {\n        rooms[room].active = parseInt(val, 10);\n    } else if (field === \"ac_temp\") {\n        rooms[room].ac_temp = parseInt(val, 10);\n    }\n});\n\nObject.keys(rooms).forEach(roomName => {\n    let r = rooms[roomName];\n    let elapsed = now - r.lastSeen;\n    \n    if (elapsed > 300000) {\n        r.temp = \"-\";\n        r.lux = \"-\";\n        r.co2 = \"-\";\n        r.status = -1;\n        r.led_data = -1;\n        r.ac_data = -1;\n        r.projector_data = -1;\n    } else {\n        r.status = r.active === 1 ? 1 : 0;\n    }\n});\n\nlet msgRooms = {\n    topic: \"rooms\",\n    payload: Object.values(rooms)\n};\nlet msgLed = {\n    payload: 1\n};\nreturn [msgRooms, msgLed];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1170,
-        "y": 600,
+        "x": 560,
+        "y": 280,
         "wires": [
             [
-                "d3a5e18d1d977dc2",
-                "d757f5d658dfb546"
+                "class_overview_template"
             ],
             [
-                "cec41a03bd34578b",
-                "1e3e3a9a7ff5d165"
+                "influxdb_connection_led"
             ]
         ]
     },
     {
-        "id": "0eee36e819db5794",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Temp condition",
-        "group": "99298c45c45b3c75",
-        "order": 3,
-        "width": "2",
-        "height": "1",
-        "label": "Fungsi AC",
-        "labelPlacement": "left",
-        "labelAlignment": "left",
-        "states": [
-            {
-                "value": "1",
-                "valueType": "num",
-                "color": "#ff8000"
-            },
-            {
-                "value": "2",
-                "valueType": "num",
-                "color": "#00ff00"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "square",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 460,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "d757f5d658dfb546",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Projector condition",
-        "group": "99298c45c45b3c75",
-        "order": 1,
-        "width": "2",
-        "height": "1",
-        "label": "Fungsi Proyektor",
-        "labelPlacement": "left",
-        "labelAlignment": "left",
-        "states": [
-            {
-                "value": "3",
-                "valueType": "num",
-                "color": "#ff8000"
-            },
-            {
-                "value": "2",
-                "valueType": "num",
-                "color": "#00ff00"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "square",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 690,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "48dfdeb9ebfe7864",
-        "type": "ui-led",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Lamp condition",
-        "group": "99298c45c45b3c75",
-        "order": 5,
-        "width": "2",
-        "height": "1",
-        "label": "Fungsi Lampu",
-        "labelPlacement": "left",
-        "labelAlignment": "left",
-        "states": [
-            {
-                "value": "1",
-                "valueType": "num",
-                "color": "#ff8000"
-            },
-            {
-                "value": "2",
-                "valueType": "num",
-                "color": "#00ff00"
-            }
-        ],
-        "allowColorForValueInMessage": false,
-        "shape": "square",
-        "showBorder": false,
-        "showGlow": true,
-        "x": 940,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "fbf8e8eec11b018c",
+        "id": "command_history_router_fn",
         "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Room Temp Condition",
-        "func": "let currentTemp = msg.payload.tempAvg;\nlet acTemp = flow.get(\"hvac_temp\") || 18;\nlet acState = flow.get(\"hvac_state\")||false;\n\nlet monitorStartTime = context.get(\"monitorStartTime\");\nlet monitorStartTemp = context.get(\"monitorStartTemp\");\n\nlet msgLed = {};\n\nif (acState === false)\n{\n    context.set(\"monitorStartTime\", null);\n    context.set(\"monitorStartTemp\", null);\n\n    msgLed.payload = 0;\n    flow.set(\"tempCondition\", 1);\n    return msgLed;\n}\n\nif (currentTemp <= (acTemp + 1.0))\n{\n    context.set(\"monitorStartTime\", null);\n    context.set(\"monitorStartTemp\", null);\n    msgLed.payload = 2;\n    flow.set(\"tempCondition\", 1);\n    return msgLed;\n}\nif (monitorStartTime == null)\n{\n    context.set(\"monitorStartTime\", Date.now());\n    context.set(\"montiroStartTemp\", currentTemp);\n\n    msgLed.payload = 2;\n    flow.set(\"tempCondition\", 1);\n    return msgLed;\n}\n\nlet timeElapsed = Date.now()-monitorStartTime;\nlet timer = 90000;\n\nif (timeElapsed >= timer)\n{\n    if (currentTemp<= (monitorStartTemp - 0.5) || currentTemp <= 20.0)\n    {\n        context.set(\"monitorStartTime\", Date.now());\n        context.set(\"montiroStartTemp\", currentTemp);\n        msgLed.payload = 2;\n        flow.set(\"tempCondition\", 1);\n    }\n    else\n    {\n        msgLed.payload = 1;\n        flow.set(\"tempCondition\", 0);\n    }\n}\nelse\n{\n    msgLed.payload = 2;\n    flow.set(\"tempCondition\", 1);\n}\nreturn msgLed;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 280,
-        "y": 420,
-        "wires": [
-            [
-                "0eee36e819db5794"
-            ]
-        ]
-    },
-    {
-        "id": "cec41a03bd34578b",
-        "type": "ui-switch",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Projector control",
-        "label": "On/Off",
-        "group": "81517c8bc0431790",
-        "order": 2,
-        "width": "2",
-        "height": "1",
-        "passthru": true,
-        "decouple": false,
-        "topic": "projector",
-        "topicType": "str",
-        "style": "",
-        "className": "massive-switch",
-        "layout": "row-spread",
-        "clickableArea": "switch",
-        "onvalue": "1",
-        "onvalueType": "num",
-        "onicon": "projector",
-        "oncolor": "green",
-        "offvalue": "0",
-        "offvalueType": "num",
-        "officon": "projector-off",
-        "offcolor": "red",
-        "x": 440,
-        "y": 600,
-        "wires": [
-            [
-                "eceff33ec6c0f512"
-            ]
-        ]
-    },
-    {
-        "id": "eceff33ec6c0f512",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "projector boot up",
-        "func": "if (flow.get(\"blockEchoProjector\") === true)\n{\n    flow.set(\"blockEchoProjector\", false);\n    return null;\n}\n\nif (flow.get(\"projectorBooting\") === true) {\n    return null;\n}\n\nflow.set(\"projectorBooting\", true);\nflow.set(\"projectorTargetState\", msg.payload);\n\n// 3. Prepare the Output Messages\n// Output 1: Tell the LED to turn Orange (Value 1)\nlet msgLed = { payload: 1 };\n\n// Output 2: Tell the Node-RED Dashboard to physically lock/grey out the button\nlet msgLock = { enabled: false };\n\n// Output 3: The actual command to send to the ESP32 and the Delay Node\nlet msgCommand = {payload: msg.payload}; // Assuming 1 is your Modbus ON command\n\n// 4. Route the messages out of the 3 specific ports\nreturn [msgLed, msgLock, msgCommand];",
+        "z": "38555e5d51f8978d",
+        "name": "Command & History Router",
+        "func": "if (msg.topic === \"control\") {\n    let payload = msg.payload;\n    let room = payload.room;\n    let device = payload.device;\n    let value = payload.value;\n    \n    let msgMqtt = {\n        topic: room + \"/control/\" + device,\n        payload: String(value)\n    };\n    \n    let msgInflux = {\n        measurement: \"classroom_control\",\n        payload: [\n            { [device]: value },\n            { room: room }\n        ]\n    };\n    \n    return [msgMqtt, msgInflux, null];\n} \nelse if (msg.topic === \"get_history\") {\n    let room = msg.payload.room;\n    let range = msg.payload.range || \"24h\";\n    \n    let rangePart = '';\n    if (range === 'custom') {\n        let start = msg.payload.start ? new Date(msg.payload.start).toISOString() : new Date(Date.now() - 24*3600*1000).toISOString();\n        let stop = msg.payload.stop ? new Date(msg.payload.stop).toISOString() : new Date().toISOString();\n        rangePart = `|> range(start: ${start}, stop: ${stop})`;\n    } else {\n        rangePart = `|> range(start: -${range})`;\n    }\n    \n    let msgQuery = {\n        payload: room,\n        query: `from(bucket: \"SmartClass\")\n  ${rangePart}\n  |> filter(fn: (r) => r.room == \"${room}\")\n  |> filter(fn: (r) => r._measurement == \"classroom\")\n  |> filter(fn: (r) => r._field == \"temp\" or r._field == \"lux\" or r._field == \"co2\")`\n    };\n    \n    return [null, null, msgQuery];\n}\n\nreturn null;",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 650,
-        "y": 600,
+        "x": 480,
+        "y": 420,
         "wires": [
             [
-                "d3a5e18d1d977dc2"
+                "dashboard_mqtt_out"
             ],
             [
-                "cec41a03bd34578b"
+                "dashboard_influx_out"
             ],
             [
-                "664c743e5d9ccf5a",
-                "2fc3fff8edf98328"
+                "history_influx_in"
             ]
         ]
     },
     {
-        "id": "2fc3fff8edf98328",
-        "type": "delay",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "pauseType": "delay",
-        "timeout": "5",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 960,
-        "y": 600,
-        "wires": [
-            [
-                "229f141ffac38ceb"
-            ]
-        ]
-    },
-    {
-        "id": "91df98e4f904db2e",
-        "type": "ui-chart",
-        "z": "5889d3dbc3b1abfc",
-        "group": "7d76c15d01cc0758",
-        "name": "Co PPM",
-        "label": "CO",
-        "order": 2,
-        "chartType": "line",
-        "category": "topic",
-        "categoryType": "msg",
-        "xAxisLabel": "",
-        "xAxisProperty": "",
-        "xAxisPropertyType": "timestamp",
-        "xAxisType": "time",
-        "xAxisFormat": "",
-        "xAxisFormatType": "auto",
-        "xmin": "",
-        "xmax": "",
-        "yAxisLabel": "",
-        "yAxisProperty": "payload.co",
-        "yAxisPropertyType": "msg",
-        "ymin": "",
-        "ymax": "",
-        "bins": 10,
-        "action": "append",
-        "stackSeries": false,
-        "pointShape": "circle",
-        "pointRadius": 4,
-        "showLegend": true,
-        "removeOlder": 1,
-        "removeOlderUnit": "3600",
-        "removeOlderPoints": "",
-        "colors": [
-            "#0095ff",
-            "#ff0000",
-            "#ff7f0e",
-            "#2ca02c",
-            "#a347e1",
-            "#d62728",
-            "#ff9896",
-            "#9467bd",
-            "#c5b0d5"
-        ],
-        "textColor": [
-            "#666666"
-        ],
-        "textColorDefault": true,
-        "gridColor": [
-            "#e5e5e5"
-        ],
-        "gridColorDefault": true,
-        "width": 6,
-        "height": 8,
-        "className": "",
-        "interpolation": "linear",
-        "x": 1800,
-        "y": 940,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "1e3e3a9a7ff5d165",
+        "id": "dashboard_mqtt_out",
         "type": "mqtt out",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/data/projector",
-        "qos": "1",
+        "z": "38555e5d51f8978d",
+        "name": "MQTT Command Out",
+        "topic": "",
+        "qos": "",
         "retain": "",
         "respTopic": "",
         "contentType": "",
@@ -3603,244 +1356,129 @@
         "correl": "",
         "expiry": "",
         "broker": "3ea80e6b0f49fd5b",
-        "x": 1490,
-        "y": 540,
+        "x": 800,
+        "y": 380,
         "wires": []
     },
     {
-        "id": "7a9c1e4116c46c76",
-        "type": "mqtt in",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/control/projector",
-        "qos": "1",
-        "datatype": "auto-detect",
-        "broker": "3ea80e6b0f49fd5b",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 150,
-        "y": 600,
-        "wires": [
-            [
-                "cec41a03bd34578b"
-            ]
-        ]
+        "id": "dashboard_influx_out",
+        "type": "influxdb out",
+        "z": "38555e5d51f8978d",
+        "influxdb": "285041f7cec92dc2",
+        "name": "Record Control Command",
+        "measurement": "",
+        "precision": "",
+        "retentionPolicy": "",
+        "x": 820,
+        "y": 420,
+        "wires": []
     },
     {
-        "id": "f3e3333ce9ab4aca",
-        "type": "mqtt in",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/control/led",
-        "qos": "1",
-        "datatype": "auto-detect",
-        "broker": "3ea80e6b0f49fd5b",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 110,
-        "y": 760,
-        "wires": [
-            [
-                "2d1dbffc602ce409"
-            ]
-        ]
-    },
-    {
-        "id": "fdcafda86994d588",
-        "type": "mqtt in",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "topic": "HD01/control/ac",
-        "qos": "1",
-        "datatype": "auto-detect",
-        "broker": "3ea80e6b0f49fd5b",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 1300,
-        "y": 800,
-        "wires": [
-            [
-                "ac_control_parser_node"
-            ]
-        ]
-    },
-    {
-        "id": "d8479aa44aa73a07",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "lamp control binary",
-        "func": "if (msg.topic === \"lamp1\" && msg.payload === flow.get(\"lamp1\")) return null;\nif (msg.topic === \"lamp2\" && msg.payload === flow.get(\"lamp2\")) return null; \nif (msg.topic === \"lamp3\" && msg.payload === flow.get(\"lamp3\")) return null;\nif (msg.topic === \"lamp4\" && msg.payload === flow.get(\"lamp4\")) return null;\nif (msg.topic === \"main_lamp\" && msg.payload === flow.get(\"main_lamp_state\")) return null;\n\nlet l1 = flow.get('lamp1') || 0;\nlet l2 = flow.get('lamp2') || 0;\nlet l3 = flow.get('lamp3') || 0;\nlet l4 = flow.get('lamp4') || 0;\n\nlet mainStateCommand = null;\nlet syncL1 = null, syncL2 = null, syncL3 = null, syncL4 = null;\n\nif (msg.topic === \"app_array\") \n{\n    let str = String(msg.payload);\n    if (str.length !==4) return null;\n\n    l1 = parseInt(str.charAt(0), 10);\n    l2 = parseInt(str.charAt(1), 10);\n    l3 = parseInt(str.charAt(2), 10);\n    l4 = parseInt(str.charAt(3), 10);\n\n    flow.set('lamp1', l1);\n    flow.set('lamp2', l2);\n    flow.set('lamp3', l3);\n    flow.set('lamp4', l4);\n\n    syncL1 = {payload: l1};\n    syncL2 = {payload: l2};\n    syncL3 = {payload: l3};\n    syncL4 = {payload: l4};\n\n} \nelse if (msg.topic === \"main_lamp\")\n{\n    flow.set ('main_lamp_state', msg.payload);\n    l1 = l2 = l3 = l4 = msg.payload;\n\n    flow.set('lamp1', l1);\n    flow.set('lamp2', l2);\n    flow.set('lamp3', l3);\n    flow.set('lamp4', l4); \n\n    syncL1 = { payload: l1 };\n    syncL2 = { payload: l2 };\n    syncL3 = { payload: l3 };\n    syncL4 = { payload: l4 };\n    \n}\nelse \n{\n    flow.set (msg.topic, msg.payload);\n\n    l1 = flow.get('lamp1') || 0;\n    l2 = flow.get('lamp2') || 0;\n    l3 = flow.get('lamp3') || 0;\n    l4 = flow.get('lamp4') || 0;\n}\n\nif (l1 === 0 && l2 === 0 && l3 === 0 && l4 === 0) {\n    mainStateCommand = { payload: 0 };\n} else if (l1 === 1 && l2 === 1 && l3 === 1 && l4 === 1) {\n    mainStateCommand = { payload: 1 };\n}\nlet binaryTelemetry = {payload: (l1 === 0 && l2 === 0 && l3 === 0 && l4 === 0) ? 0 : 1};\n\nreturn [mainStateCommand, binaryTelemetry, syncL1, syncL2, syncL3, syncL4];",
-        "outputs": 6,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 350,
-        "y": 840,
-        "wires": [
-            [
-                "b3dbdaa903905060"
-            ],
-            [
-                "db211d3695243dc4"
-            ],
-            [
-                "fd75fd6e5d8faf55"
-            ],
-            [
-                "a2369582361950ab"
-            ],
-            [
-                "334c1191f783211b"
-            ],
-            [
-                "0c6f7ff7c281a767"
-            ]
-        ]
-    },
-    {
-        "id": "2d1dbffc602ce409",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Parse Lamp Command",
-        "x": 110,
-        "y": 840,
-        "wires": [
-            [
-                "d8479aa44aa73a07"
-            ]
-        ],
-        "func": "let str = String(msg.payload);\nif (str.length === 4) {\n    msg.topic = \"app_array\";\n} else {\n    let val = (str === \"1\" || str === \"true\" || str === \"on\") ? 1 : 0;\n    msg.payload = val;\n    msg.topic = \"main_lamp\";\n}\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": []
-    },
-    {
-        "id": "dc0b60b129d1a20a",
-        "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "Lamp Condition",
-        "func": "let luxAvg = msg.payload.luxAvg;\n\nlet threshold = parseInt(flow.get(\"lampThreshold\"), 10) || 0;\nlet l1 = parseInt (flow.get(\"lamp1\"),10) || 0;\nlet l2 = parseInt (flow.get(\"lamp2\"),10)  || 0;\nlet l3 = parseInt (flow.get(\"lamp3\"),10)  || 0;\nlet l4 = parseInt (flow.get(\"lamp4\"),10)  || 0;\n\nlet msgLed = {};\nif (l1 === 0 && l2 === 0 && l3 === 0 && l4 ===0)\n{\n    msgLed.payload = 0;\n    flow.set(\"lampCondition\", 1);\n    return msgLed;\n}\n\nif (luxAvg === undefined || isNaN(luxAvg))\n{\n    return null;\n}\n\nif (luxAvg < threshold)\n{\n    msgLed.payload = 1;\n    flow.set(\"lampCondition\", 0);\n\n}\nelse \n{\n    msgLed.payload = 2;\n    flow.set(\"lampCondition\", 1);\n\n}\nreturn msgLed",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 800,
-        "y": 400,
-        "wires": [
-            [
-                "48dfdeb9ebfe7864"
-            ]
-        ]
-    },
-    {
-        "id": "bbd1fc466037e2ce",
-        "type": "ui-number-input",
-        "z": "5889d3dbc3b1abfc",
-        "group": "99298c45c45b3c75",
-        "name": "Kalibrasi Lux",
-        "label": "Kalibrasi Lux",
-        "order": 6,
-        "width": "2",
-        "height": "1",
-        "topic": "topic",
-        "topicType": "msg",
-        "min": 0,
-        "max": "70000",
-        "step": 1,
-        "tooltip": "tulis angka pada lux meter disini",
-        "delay": 300,
-        "passthru": true,
-        "sendOnDelay": false,
-        "sendOnBlur": true,
-        "sendOnEnter": true,
-        "className": "",
-        "clearable": false,
-        "icon": "lightbulb",
-        "iconPosition": "left",
-        "iconInnerPosition": "inside",
-        "spinner": "default",
+        "id": "history_influx_in",
+        "type": "influxdb in",
+        "z": "38555e5d51f8978d",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Query 24h History",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
         "x": 790,
-        "y": 320,
+        "y": 480,
         "wires": [
             [
-                "af9c41b3ef960456"
+                "history_process_fn"
             ]
         ]
     },
     {
-        "id": "af9c41b3ef960456",
-        "type": "change",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "rules": [
+        "id": "history_process_fn",
+        "type": "function",
+        "z": "38555e5d51f8978d",
+        "name": "Process History",
+        "func": "if (!Array.isArray(msg.payload)) {\n    return null;\n}\n\nlet records = msg.payload;\nlet room = records.length > 0 ? records[0].room : \"\";\n\nlet historyData = {\n    temp: [],\n    lux: [],\n    co2: []\n};\n\nrecords.forEach(row => {\n    let field = row._field;\n    let value = parseFloat(row._value);\n    let time = new Date(row._time).getTime();\n    \n    if (field === \"temp\" || field === \"temperature\") {\n        historyData.temp.push({ x: time, y: value });\n    } else if (field === \"lux\") {\n        historyData.lux.push({ x: time, y: value });\n    } else if (field === \"co2\") {\n        historyData.co2.push({ x: time, y: value });\n    }\n});\n\nhistoryData.temp.sort((a, b) => a.x - b.x);\nhistoryData.lux.sort((a, b) => a.x - b.x);\nhistoryData.co2.sort((a, b) => a.x - b.x);\n\nmsg.topic = \"history\";\nmsg.room = room;\nmsg.payload = historyData;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1000,
+        "y": 480,
+        "wires": [
+            [
+                "class_overview_template"
+            ]
+        ]
+    },
+    {
+        "id": "influxdb_connection_led",
+        "type": "ui-led",
+        "z": "38555e5d51f8978d",
+        "name": "InfluxDB Connection",
+        "group": "0c3c5ebdba98837d",
+        "order": 4,
+        "width": "3",
+        "height": "1",
+        "label": "InfluxDB",
+        "labelPlacement": "left",
+        "labelAlignment": "flex-end",
+        "states": [
             {
-                "t": "set",
-                "p": "lampThreshold",
-                "pt": "flow",
-                "to": "payload",
-                "tot": "msg"
+                "value": "0",
+                "valueType": "num",
+                "color": "#ff0000"
+            },
+            {
+                "value": "1",
+                "valueType": "num",
+                "color": "#00ff00"
             }
         ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1030,
-        "y": 320,
+        "allowColorForValueInMessage": false,
+        "shape": "square",
+        "showBorder": false,
+        "showGlow": true,
+        "x": 800,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "influx_catch_errors",
+        "type": "catch",
+        "z": "38555e5d51f8978d",
+        "name": "Catch Influx Errors",
+        "scope": [
+            "telemetry_poll_influx",
+            "history_influx_in"
+        ],
+        "uncaught": false,
+        "x": 340,
+        "y": 140,
         "wires": [
-            []
+            [
+                "influx_error_fn"
+            ]
         ]
     },
     {
-        "id": "cf66011b82bfa573",
+        "id": "influx_error_fn",
         "type": "function",
-        "z": "5889d3dbc3b1abfc",
-        "name": "overall condition",
-        "func": "let tempCondition = parseInt(flow.get(\"tempCondition\"), 10) || 0;\nlet lampCondition = parseInt(flow.get(\"lampCondition\"), 10) || 0;\nlet projectorCondition = parseInt(flow.get(\"projectorCondition\"), 10) || 0;\nlet mqttCondition = parseInt(flow.get(\"mqttCondition\"), 10) || 0;\n\nlet msgLed = {};\nif (mqttCondition === 0)\n{\n    msgLed.payload = 0;\n}\nelse if (tempCondition === 1 && lampCondition === 1 && projectorCondition === 1 )\n{\n    msgLed.payload = 2;\n}\nelse\n{\n    msgLed.payload = 1;\n}\nreturn msgLed;",
+        "z": "38555e5d51f8978d",
+        "name": "Influx Error Status",
+        "func": "msg.payload = 0;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1360,
-        "y": 160,
+        "x": 560,
+        "y": 140,
         "wires": [
             [
-                "1efba3728994692e"
-            ]
-        ]
-    },
-    {
-        "id": "a5524165a5bd361a",
-        "type": "inject",
-        "z": "5889d3dbc3b1abfc",
-        "name": "",
-        "props": [],
-        "repeat": "10",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 1150,
-        "y": 160,
-        "wires": [
-            [
-                "cf66011b82bfa573"
+                "influxdb_connection_led"
             ]
         ]
     }

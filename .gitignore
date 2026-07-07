@@ -1,0 +1,7 @@
+# Ignore everything by default
+*
+
+# Allow tracking only these specific files
+!README.md
+!flows.json
+!.gitignore
