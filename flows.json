@@ -367,6 +367,54 @@
         "className": ""
     },
     {
+        "id": "classroom_detail_page",
+        "type": "ui-page",
+        "name": "Classroom Detail",
+        "ui": "06f1f55e1db341f1",
+        "path": "/classroom-detail",
+        "icon": "school",
+        "layout": "grid",
+        "theme": "2d1d01a6a9d8ae63",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 2,
+        "className": "",
+        "visible": false,
+        "disabled": false
+    },
+    {
+        "id": "classroom_detail_group",
+        "type": "ui-group",
+        "name": "Classroom Details & Controls",
+        "page": "classroom_detail_page",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "className": "",
+        "visible": true,
+        "disabled": false
+    },
+    {
         "id": "dc368db73e4f397d",
         "type": "influxdb out",
         "z": "a1b13acf0ebc83d8",
@@ -1034,6 +1082,42 @@
         "wires": []
     },
     {
+        "id": "165bff3d517ae0eb",
+        "type": "status",
+        "z": "a1b13acf0ebc83d8",
+        "name": "",
+        "scope": [
+            "04629adfe1d35ea2"
+        ],
+        "x": 80,
+        "y": 80,
+        "wires": [
+            [
+                "c83f25b1feea046c"
+            ]
+        ]
+    },
+    {
+        "id": "c83f25b1feea046c",
+        "type": "function",
+        "z": "a1b13acf0ebc83d8",
+        "name": "MQTT Status",
+        "func": "// Extract the raw status text from the node\nlet mqttState = msg.status.text;\n\n// Map the text to integers\nif (mqttState === \"node-red:common.status.connected\") {\n    msg.payload = 2; \n} else if (mqttState === \"node-red:common.status.connecting\") {\n    msg.payload = 1;\n} else {\n    // This catches \"disconnected\", \"error\", or any other failure state\n    msg.payload = 0; \n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 290,
+        "y": 80,
+        "wires": [
+            [
+                "0eefca5c4e38e7ea"
+            ]
+        ]
+    },
+    {
         "id": "7c20841b07811598",
         "type": "moment",
         "z": "38555e5d51f8978d",
@@ -1140,45 +1224,9 @@
         "shape": "square",
         "showBorder": false,
         "showGlow": true,
-        "x": 530,
+        "x": 610,
         "y": 80,
         "wires": []
-    },
-    {
-        "id": "165bff3d517ae0eb",
-        "type": "status",
-        "z": "a1b13acf0ebc83d8",
-        "name": "",
-        "scope": [
-            "04629adfe1d35ea2"
-        ],
-        "x": 80,
-        "y": 80,
-        "wires": [
-            [
-                "c83f25b1feea046c"
-            ]
-        ]
-    },
-    {
-        "id": "c83f25b1feea046c",
-        "type": "function",
-        "z": "a1b13acf0ebc83d8",
-        "name": "MQTT Status",
-        "func": "// Extract the raw status text from the node\nlet mqttState = msg.status.text;\n\n// Map the text to integers\nif (mqttState === \"node-red:common.status.connected\") {\n    msg.payload = 2; \n} else if (mqttState === \"node-red:common.status.connecting\") {\n    msg.payload = 1;\n} else {\n    // This catches \"disconnected\", \"error\", or any other failure state\n    msg.payload = 0; \n}\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 290,
-        "y": 80,
-        "wires": [
-            [
-                "0eefca5c4e38e7ea"
-            ]
-        ]
     },
     {
         "id": "8a021193d2ac8c58",
@@ -1280,19 +1328,19 @@
         "type": "function",
         "z": "38555e5d51f8978d",
         "name": "Poll Rooms State",
+        "func": "let roomsState = flow.get(\"roomsState\") || {};\nlet now = Date.now();\n\nObject.keys(roomsState).forEach(roomName => {\n    let r = roomsState[roomName];\n    let elapsed = now - r.lastSeen;\n    \n    if (elapsed > 300000) {\n        r.status = -1;\n        r.led_data = -1;\n        r.ac_data = -1;\n        r.projector_data = -1;\n    } else {\n        r.status = r.active === 1 ? 1 : 0;\n    }\n});\n\nlet msgRooms = {\n    topic: \"rooms\",\n    payload: Object.values(roomsState)\n};\nlet msgLed = {\n    payload: 1\n};\nreturn [msgRooms, msgLed];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
         "x": 480,
         "y": 280,
         "wires": [
             [
                 "class_overview_template"
             ]
-        ],
-        "func": "let roomsState = flow.get(\"roomsState\") || {};\nlet now = Date.now();\n\nObject.keys(roomsState).forEach(roomName => {\n    let r = roomsState[roomName];\n    let elapsed = now - r.lastSeen;\n    \n    if (elapsed > 300000) {\n        r.status = -1;\n        r.led_data = -1;\n        r.ac_data = -1;\n        r.projector_data = -1;\n    } else {\n        r.status = r.active === 1 ? 1 : 0;\n    }\n});\n\nlet msgRooms = {\n    topic: \"rooms\",\n    payload: Object.values(roomsState)\n};\nlet msgLed = {\n    payload: 1\n};\nreturn [msgRooms, msgLed];",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": []
+        ]
     },
     {
         "id": "command_history_router_fn",
@@ -1461,60 +1509,11 @@
         ]
     },
     {
-        "id": "classroom_detail_page",
-        "type": "ui-page",
-        "name": "Classroom Detail",
-        "ui": "06f1f55e1db341f1",
-        "path": "/classroom-detail",
-        "icon": "school",
-        "layout": "grid",
-        "theme": "2d1d01a6a9d8ae63",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 2,
-        "className": "",
-        "visible": false,
-        "disabled": false
-    },
-    {
-        "id": "classroom_detail_group",
-        "type": "ui-group",
-        "name": "Classroom Details & Controls",
-        "page": "classroom_detail_page",
-        "order": 1,
-        "width": "12",
-        "height": "1",
-        "layout": "grid",
-        "className": "",
-        "visible": true,
-        "disabled": false
-    },
-    {
         "id": "classroom_detail_template",
         "type": "ui-template",
         "z": "38555e5d51f8978d",
-        "name": "Classroom Detail View",
         "group": "classroom_detail_group",
+        "name": "Classroom Detail View",
         "order": 1,
         "width": "12",
         "height": "auto",
