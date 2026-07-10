@@ -400,6 +400,38 @@
         "disabled": false
     },
     {
+        "id": "online_mqtt_broker_config",
+        "type": "mqtt-broker",
+        "name": "Online MQTT Broker",
+        "broker": "wd5de919.ala.asia-southeast1.emqxsl.com",
+        "port": "8883",
+        "tls": "",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
         "id": "dc368db73e4f397d",
         "type": "influxdb out",
         "z": "a1b13acf0ebc83d8",
@@ -455,8 +487,7 @@
         "y": 320,
         "wires": [
             [
-                "78ac9837c454b6ad",
-                "detail_live_filter"
+                "78ac9837c454b6ad"
             ]
         ]
     },
@@ -1097,10 +1128,86 @@
         "x": 290,
         "y": 80,
         "wires": [
+            []
+        ]
+    },
+    {
+        "id": "local_mqtt_in_bridge",
+        "type": "mqtt in",
+        "z": "a1b13acf0ebc83d8",
+        "name": "Local MQTT In Bridge",
+        "topic": "+/data/+",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "3ea80e6b0f49fd5b",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 180,
+        "wires": [
             [
-                "0eefca5c4e38e7ea"
+                "online_mqtt_out_bridge"
             ]
         ]
+    },
+    {
+        "id": "online_mqtt_out_bridge",
+        "type": "mqtt out",
+        "z": "a1b13acf0ebc83d8",
+        "name": "Online MQTT Out Bridge",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "online_mqtt_broker_config",
+        "x": 350,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "online_mqtt_in_bridge",
+        "type": "mqtt in",
+        "z": "a1b13acf0ebc83d8",
+        "name": "Online MQTT In Bridge",
+        "topic": "+/control/+",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "online_mqtt_broker_config",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 120,
+        "y": 240,
+        "wires": [
+            [
+                "local_mqtt_out_bridge"
+            ]
+        ]
+    },
+    {
+        "id": "local_mqtt_out_bridge",
+        "type": "mqtt out",
+        "z": "a1b13acf0ebc83d8",
+        "name": "Local MQTT Out Bridge",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "3ea80e6b0f49fd5b",
+        "x": 350,
+        "y": 240,
+        "wires": []
     },
     {
         "id": "7c20841b07811598",
