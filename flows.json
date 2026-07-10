@@ -209,10 +209,10 @@
     {
         "id": "2abd542ed67dc832",
         "type": "ui-page",
-        "name": "Page 3",
+        "name": "Classroom Schedule",
         "ui": "06f1f55e1db341f1",
-        "path": "/page3",
-        "icon": "home",
+        "path": "/schedule",
+        "icon": "mdi-calendar-clock",
         "layout": "grid",
         "theme": "2d1d01a6a9d8ae63",
         "breakpoints": [
@@ -1747,6 +1747,143 @@
         "wires": [
             [
                 "influxdb_connection_led"
+            ]
+        ]
+    },
+    {
+        "id": "schedule_ui_group",
+        "type": "ui-group",
+        "name": "Classroom Weekly Schedule",
+        "page": "2abd542ed67dc832",
+        "order": 1,
+        "width": 12,
+        "height": 1,
+        "layout": "grid",
+        "showHeader": false,
+        "className": "",
+        "visible": true,
+        "disabled": false
+    },
+    {
+        "id": "schedule_ui_template",
+        "type": "ui-template",
+        "z": "38555e5d51f8978d",
+        "group": "schedule_ui_group",
+        "name": "Schedule UI Template",
+        "order": 1,
+        "width": 12,
+        "height": 0,
+        "format": "html",
+        "templateScope": "local",
+        "x": 200,
+        "y": 600,
+        "wires": [
+            [
+                "schedule_backend_router"
+            ]
+        ],
+        "syntax": "html",
+        "value": "\n<template>\n    <div class=\"schedule-container\">\n        <!-- Header card with selector -->\n        <div class=\"schedule-header-card\">\n            <div class=\"schedule-title\">\n                <h2>Classroom Weekly Schedule</h2>\n                <p>Manage repeating weekly class session schedules</p>\n            </div>\n            <div class=\"classroom-select-wrapper\">\n                <select v-model=\"selectedRoom\" @change=\"loadSchedule\">\n                    <option v-for=\"room in rooms\" :key=\"room.id\" :value=\"room.id\">\n                        {{ room.name }}\n                    </option>\n                </select>\n            </div>\n        </div>\n\n        <!-- Loading spinner -->\n        <div v-if=\"isLoading\" class=\"loader-container\">\n            <div class=\"spinner\"></div>\n            <div style=\"font-size: 0.9rem; opacity: 0.7;\">Loading Schedule...</div>\n        </div>\n\n        <!-- Weekly schedule grid -->\n        <div v-else-if=\"selectedRoom\">\n            <div v-for=\"day in weekdays\" :key=\"day\" class=\"day-card\">\n                <div class=\"day-info\">\n                    <div class=\"day-name\">{{ day }}</div>\n                    <div class=\"active-sessions-count\">\n                        {{ activeSessionsForCode(scheduleData[day]).length }} sessions scheduled\n                    </div>\n                </div>\n\n                <!-- Session visual timeline -->\n                <div class=\"timeline-wrapper\">\n                    <div v-for=\"session in sessions\" \n                         :key=\"session.number\" \n                         class=\"timeline-slot\"\n                         :class=\"{ active: isSessionActive(day, session.number) }\">\n                        <span class=\"slot-label\">S{{ session.number }}</span>\n                        <span class=\"slot-time\">{{ session.timeRange.split(' ')[0] }}</span>\n                        <div class=\"slot-tooltip\">\n                            {{ session.label }}: {{ session.timeRange }}\n                        </div>\n                    </div>\n                </div>\n\n                <!-- Edit action button -->\n                <button class=\"edit-btn\" @click=\"openEditScheduleDialog(day, scheduleData[day])\">\n                    <svg style=\"width:20px;height:20px\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\">\n                        <path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"></path>\n                        <path d=\"M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z\"></path>\n                    </svg>\n                </button>\n            </div>\n        </div>\n\n        <div v-else style=\"text-align: center; padding: 2rem; opacity: 0.6;\">\n            No classroom selected.\n        </div>\n\n        <!-- Edit dialog overlay modal -->\n        <div v-if=\"isModalOpen\" class=\"modal-overlay\">\n            <div class=\"modal-content\">\n                <div class=\"modal-header\">\n                    <h3>Edit Schedule - {{ modalDay }}</h3>\n                    <button class=\"close-modal\" @click=\"isModalOpen = false\">&times;</button>\n                </div>\n                <div class=\"modal-body\">\n                    <p style=\"font-size: 0.85rem; opacity: 0.7; margin: 0 0 0.5rem 0;\">\n                        Select active repeating sessions for this day:\n                    </p>\n                    <div v-for=\"session in sessions\" \n                         :key=\"session.number\"\n                         class=\"session-checkbox-row\"\n                         :class=\"{ checked: modalSessions.includes(session.number) }\"\n                         @click=\"toggleSession(session.number)\">\n                        <div class=\"session-info-left\">\n                            <span class=\"session-label-name\">{{ session.label }}</span>\n                            <span class=\"session-time-range\">{{ session.timeRange }}</span>\n                        </div>\n                        <div class=\"custom-checkbox\">\n                            <div class=\"custom-checkbox-check\"></div>\n                        </div>\n                    </div>\n                </div>\n                <div class=\"modal-actions\">\n                    <button class=\"btn-cancel\" @click=\"isModalOpen = false\">Cancel</button>\n                    <button class=\"btn-save\" @click=\"saveDaySchedule\">Save Changes</button>\n                </div>\n            </div>\n        </div>\n    </div>\n</template>\n\n<script>\nexport default {\n    data() {\n        return {\n            rooms: [],\n            selectedRoom: '',\n            scheduleData: {\n                Monday: '000000',\n                Tuesday: '000000',\n                Wednesday: '000000',\n                Thursday: '000000',\n                Friday: '000000',\n                Saturday: '000000',\n                Sunday: '000000'\n            },\n            isLoading: false,\n            weekdays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],\n            sessions: [\n                { number: 1, label: 'Session 1', timeRange: '07:20 - 09:00' },\n                { number: 2, label: 'Session 2', timeRange: '09:20 - 11:00' },\n                { number: 3, label: 'Session 3', timeRange: '11:20 - 13:00' },\n                { number: 4, label: 'Session 4', timeRange: '13:20 - 15:00' },\n                { number: 5, label: 'Session 5', timeRange: '15:20 - 17:00' },\n                { number: 6, label: 'Session 6', timeRange: '17:20 - 19:00' }\n            ],\n            isModalOpen: false,\n            modalDay: '',\n            modalSessions: []\n        };\n    },\n    watch: {\n        msg(newMsg) {\n            if (newMsg && newMsg.topic === 'rooms' && Array.isArray(newMsg.payload)) {\n                this.rooms = newMsg.payload;\n                if (this.rooms.length > 0 && !this.selectedRoom) {\n                    this.selectedRoom = this.rooms[0].id;\n                    this.loadSchedule();\n                }\n            }\n            if (newMsg && newMsg.topic === 'schedule_data') {\n                this.scheduleData = Object.assign({}, this.scheduleData, newMsg.payload);\n                this.isLoading = false;\n            }\n            if (newMsg && newMsg.topic === 'save_success') {\n                this.isLoading = false;\n                this.loadSchedule(); // Re-query schedule\n            }\n        }\n    },\n    mounted() {\n        this.send({ topic: 'init_schedule' });\n    },\n    methods: {\n        loadSchedule() {\n            if (!this.selectedRoom) return;\n            this.isLoading = true;\n            this.send({ topic: 'get_schedule', payload: this.selectedRoom });\n        },\n        isSessionActive(day, num) {\n            const code = this.scheduleData[day] || '000000';\n            return code[num - 1] === '1';\n        },\n        activeSessionsForCode(code) {\n            const active = [];\n            const strCode = code || '000000';\n            for (let i = 0; i < strCode.length && i < this.sessions.length; i++) {\n                if (strCode[i] === '1') {\n                    active.push(this.sessions[i]);\n                }\n            }\n            return active;\n        },\n        openEditScheduleDialog(day, code) {\n            this.modalDay = day;\n            this.modalSessions = [];\n            const strCode = code || '000000';\n            for (let i = 0; i < strCode.length; i++) {\n                if (strCode[i] === '1') {\n                    this.modalSessions.push(i + 1);\n                }\n            }\n            this.isModalOpen = true;\n        },\n        toggleSession(num) {\n            const idx = this.modalSessions.indexOf(num);\n            if (idx === -1) {\n                this.modalSessions.push(num);\n            } else {\n                this.modalSessions.splice(idx, 1);\n            }\n        },\n        saveDaySchedule() {\n            let code = \"\";\n            for (let i = 1; i <= 6; i++) {\n                code += this.modalSessions.includes(i) ? \"1\" : \"0\";\n            }\n            this.isLoading = true;\n            this.send({\n                topic: 'save_schedule',\n                payload: {\n                    room: this.selectedRoom,\n                    day: this.modalDay,\n                    code: code\n                }\n            });\n            this.isModalOpen = false;\n        }\n    }\n}\n</script>\n\n<style>\n.schedule-container {\n    font-family: 'Outfit', sans-serif;\n    color: var(--theme-color-text);\n    padding: 1rem;\n    max-width: 900px;\n    margin: 0 auto;\n}\n\n.schedule-header-card {\n    background: var(--theme-background-card);\n    border: 1px solid rgba(255,255,255,0.08);\n    border-radius: 16px;\n    padding: 1.5rem;\n    margin-bottom: 1.5rem;\n    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    flex-wrap: wrap;\n    gap: 1rem;\n}\n\n.schedule-title h2 {\n    margin: 0;\n    font-size: 1.5rem;\n    font-weight: 700;\n    background: linear-gradient(135deg, #6366f1, #a855f7);\n    -webkit-background-clip: text;\n    -webkit-text-fill-color: transparent;\n}\n\n.schedule-title p {\n    margin: 0.25rem 0 0 0;\n    font-size: 0.85rem;\n    opacity: 0.7;\n}\n\n.classroom-select-wrapper select {\n    background: rgba(0, 0, 0, 0.2);\n    border: 1px solid var(--theme-border-color);\n    color: var(--theme-color-text);\n    padding: 0.75rem 2rem 0.75rem 1rem;\n    border-radius: 10px;\n    outline: none;\n    font-size: 0.95rem;\n    cursor: pointer;\n    transition: all 0.3s ease;\n    appearance: none;\n    background-image: url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\");\n    background-repeat: no-repeat;\n    background-position: right 0.75rem center;\n    background-size: 1rem;\n}\n\n.classroom-select-wrapper select:focus {\n    border-color: var(--theme-color-primary);\n    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);\n}\n\n.day-card {\n    background: var(--theme-background-card);\n    border: 1px solid rgba(255,255,255,0.06);\n    border-radius: 14px;\n    padding: 1.25rem 1.5rem;\n    margin-bottom: 1rem;\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    transition: transform 0.2s ease, box-shadow 0.2s ease;\n    gap: 1.5rem;\n}\n\n.day-card:hover {\n    transform: translateY(-2px);\n    box-shadow: 0 6px 20px 0 rgba(0,0,0,0.12);\n}\n\n.day-info {\n    width: 150px;\n    flex-shrink: 0;\n}\n\n.day-name {\n    font-weight: 700;\n    font-size: 1.1rem;\n    margin-bottom: 0.25rem;\n}\n\n.active-sessions-count {\n    font-size: 0.8rem;\n    opacity: 0.6;\n}\n\n.timeline-wrapper {\n    flex-grow: 1;\n    display: flex;\n    gap: 8px;\n    align-items: center;\n}\n\n.timeline-slot {\n    flex: 1;\n    height: 40px;\n    border-radius: 8px;\n    background: rgba(255,255,255,0.04);\n    border: 1px solid rgba(255,255,255,0.05);\n    display: flex;\n    flex-direction: column;\n    justify-content: center;\n    align-items: center;\n    font-size: 0.75rem;\n    font-weight: 600;\n    opacity: 0.5;\n    position: relative;\n    cursor: default;\n    transition: all 0.3s ease;\n}\n\n.timeline-slot.active {\n    background: linear-gradient(135deg, #6366f1, #4f46e5);\n    border-color: #6366f1;\n    opacity: 1;\n    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);\n}\n\n.timeline-slot .slot-label {\n    font-size: 0.7rem;\n    opacity: 0.9;\n}\n\n.timeline-slot .slot-time {\n    font-size: 0.6rem;\n    opacity: 0.75;\n}\n\n.timeline-slot:hover .slot-tooltip {\n    display: block;\n}\n\n.slot-tooltip {\n    display: none;\n    position: absolute;\n    bottom: 120%;\n    left: 50%;\n    transform: translateX(-50%);\n    background: #1e1e2e;\n    color: #fff;\n    padding: 0.5rem;\n    border-radius: 6px;\n    font-size: 0.65rem;\n    white-space: nowrap;\n    z-index: 10;\n    box-shadow: 0 4px 12px rgba(0,0,0,0.5);\n    border: 1px solid rgba(255,255,255,0.1);\n}\n\n.edit-btn {\n    background: none;\n    border: 1px solid rgba(255,255,255,0.15);\n    color: var(--theme-color-primary);\n    padding: 0.5rem;\n    border-radius: 8px;\n    cursor: pointer;\n    transition: all 0.2s ease;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    flex-shrink: 0;\n}\n\n.edit-btn:hover {\n    background: rgba(99, 102, 241, 0.1);\n    border-color: var(--theme-color-primary);\n    transform: scale(1.05);\n}\n\n/* Modal styling */\n.modal-overlay {\n    position: fixed;\n    top: 0;\n    left: 0;\n    right: 0;\n    bottom: 0;\n    background: rgba(0, 0, 0, 0.6);\n    backdrop-filter: blur(8px);\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    z-index: 999;\n    animation: fadeIn 0.2s ease;\n}\n\n.modal-content {\n    background: #181824;\n    border: 1px solid rgba(255,255,255,0.1);\n    border-radius: 18px;\n    width: 90%;\n    max-width: 450px;\n    padding: 1.5rem;\n    box-shadow: 0 20px 50px rgba(0,0,0,0.3);\n    animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);\n}\n\n.modal-header {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    margin-bottom: 1.25rem;\n}\n\n.modal-header h3 {\n    margin: 0;\n    font-size: 1.3rem;\n    font-weight: 700;\n}\n\n.close-modal {\n    background: none;\n    border: none;\n    color: #fff;\n    font-size: 1.5rem;\n    cursor: pointer;\n    opacity: 0.6;\n    transition: opacity 0.2s;\n}\n\n.close-modal:hover {\n    opacity: 1;\n}\n\n.modal-body {\n    display: flex;\n    flex-direction: column;\n    gap: 12px;\n    margin-bottom: 1.5rem;\n}\n\n.session-checkbox-row {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    background: rgba(255,255,255,0.03);\n    border: 1px solid rgba(255,255,255,0.04);\n    border-radius: 10px;\n    padding: 0.75rem 1rem;\n    cursor: pointer;\n    transition: all 0.2s ease;\n}\n\n.session-checkbox-row:hover {\n    background: rgba(255,255,255,0.06);\n    border-color: rgba(255,255,255,0.1);\n}\n\n.session-checkbox-row.checked {\n    background: rgba(99, 102, 241, 0.08);\n    border-color: rgba(99, 102, 241, 0.3);\n}\n\n.session-info-left {\n    display: flex;\n    flex-direction: column;\n}\n\n.session-label-name {\n    font-weight: 600;\n    font-size: 0.9rem;\n}\n\n.session-time-range {\n    font-size: 0.75rem;\n    opacity: 0.6;\n    margin-top: 2px;\n}\n\n.custom-checkbox {\n    width: 20px;\n    height: 20px;\n    border-radius: 6px;\n    border: 2px solid rgba(255,255,255,0.3);\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    transition: all 0.2s ease;\n}\n\n.session-checkbox-row.checked .custom-checkbox {\n    background: #6366f1;\n    border-color: #6366f1;\n}\n\n.custom-checkbox-check {\n    width: 6px;\n    height: 10px;\n    border: solid white;\n    border-width: 0 2px 2px 0;\n    transform: rotate(45deg) translate(-1px, -1px);\n    display: none;\n}\n\n.session-checkbox-row.checked .custom-checkbox-check {\n    display: block;\n}\n\n.modal-actions {\n    display: flex;\n    justify-content: flex-end;\n    gap: 10px;\n}\n\n.btn-cancel {\n    background: rgba(255,255,255,0.06);\n    border: 1px solid rgba(255,255,255,0.1);\n    color: #fff;\n    padding: 0.65rem 1.25rem;\n    border-radius: 8px;\n    cursor: pointer;\n    font-weight: 600;\n    transition: all 0.2s ease;\n}\n\n.btn-cancel:hover {\n    background: rgba(255,255,255,0.1);\n}\n\n.btn-save {\n    background: linear-gradient(135deg, #6366f1, #4f46e5);\n    border: none;\n    color: #fff;\n    padding: 0.65rem 1.5rem;\n    border-radius: 8px;\n    cursor: pointer;\n    font-weight: 600;\n    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);\n    transition: all 0.2s ease;\n}\n\n.btn-save:hover {\n    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.4);\n    transform: translateY(-1px);\n}\n\n.loader-container {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    padding: 3rem;\n}\n\n.spinner {\n    width: 40px;\n    height: 40px;\n    border: 3px solid rgba(255,255,255,0.1);\n    border-radius: 50%;\n    border-top-color: var(--theme-color-primary);\n    animation: spin 1s linear infinite;\n    margin-bottom: 1rem;\n}\n\n@keyframes spin {\n    to { transform: rotate(360deg); }\n}\n\n@keyframes fadeIn {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n@keyframes slideUp {\n    from { transform: translateY(20px); opacity: 0; }\n    to { transform: translateY(0); opacity: 1; }\n}\n</style>\n"
+    },
+    {
+        "id": "schedule_backend_router",
+        "type": "function",
+        "z": "38555e5d51f8978d",
+        "name": "Schedule Backend Router",
+        "func": "\nif (msg.topic === \"init_schedule\") {\n    // Get list of rooms from roomsState in flow context\n    let roomsState = flow.get(\"roomsState\") || {};\n    let roomList = Object.keys(roomsState).map(name => ({ id: name, name: name }));\n    \n    // Fallback if empty\n    if (roomList.length === 0) {\n        roomList = [{ id: \"HD01\", name: \"HD01\" }];\n    }\n    \n    msg.topic = \"rooms\";\n    msg.payload = roomList;\n    return [null, null, msg];\n}\n\nif (msg.topic === \"get_schedule\") {\n    let room = msg.payload;\n    \n    // Send Flux query to get schedule for all 7 days of the week\n    let msgQuery = {\n        topic: \"get_schedule\",\n        room: room,\n        payload: room,\n        query: `from(bucket: \"SmartClass\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r.room == \"${room}\")\n  |> filter(fn: (r) => r._measurement == \"classroom_schedule\")\n  |> last()`\n    };\n    return [msgQuery, null, null];\n}\n\nif (msg.topic === \"save_schedule\") {\n    let payload = msg.payload;\n    let room = payload.room;\n    let day = payload.day;\n    let code = payload.code;\n    \n    // Write schedule value to InfluxDB\n    let msgWrite = {\n        topic: \"save_schedule\",\n        day: day,\n        room: room,\n        measurement: \"classroom_schedule\",\n        payload: [\n            { [day]: code },\n            { room: room }\n        ]\n    };\n    return [null, msgWrite, null];\n}\n\nreturn null;\n",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 600,
+        "wires": [
+            [
+                "schedule_influx_query"
+            ],
+            [
+                "schedule_influx_write"
+            ],
+            [
+                "schedule_ui_template"
+            ]
+        ]
+    },
+    {
+        "id": "schedule_influx_query",
+        "type": "influxdb in",
+        "z": "38555e5d51f8978d",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Query Classroom Schedule",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "Binus",
+        "x": 680,
+        "y": 560,
+        "wires": [
+            [
+                "schedule_query_aggregator"
+            ]
+        ]
+    },
+    {
+        "id": "schedule_query_aggregator",
+        "type": "function",
+        "z": "38555e5d51f8978d",
+        "name": "Aggregate Influx Schedule",
+        "func": "\nlet rows = msg.payload;\nlet schedule = {\n    Monday: '000000',\n    Tuesday: '000000',\n    Wednesday: '000000',\n    Thursday: '000000',\n    Friday: '000000',\n    Saturday: '000000',\n    Sunday: '000000'\n};\n\nif (Array.isArray(rows)) {\n    rows.forEach(row => {\n        if (row._field && row._value) {\n            // Capitalize field name just in case (e.g. 'sunday' -> 'Sunday')\n            let field = row._field.charAt(0).toUpperCase() + row._field.slice(1);\n            schedule[field] = String(row._value);\n        }\n    });\n}\n\nmsg.topic = \"schedule_data\";\nmsg.payload = schedule;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 560,
+        "wires": [
+            [
+                "schedule_ui_template"
+            ]
+        ]
+    },
+    {
+        "id": "schedule_influx_write",
+        "type": "influxdb out",
+        "z": "38555e5d51f8978d",
+        "influxdb": "dc73abf4855e0f43",
+        "name": "Write Classroom Schedule",
+        "measurement": "",
+        "precision": "",
+        "retentionPolicy": "",
+        "x": 680,
+        "y": 640,
+        "wires": [
+            [
+                "schedule_write_feedback"
+            ]
+        ]
+    },
+    {
+        "id": "schedule_write_feedback",
+        "type": "function",
+        "z": "38555e5d51f8978d",
+        "name": "Schedule Write Feedback",
+        "func": "\nmsg.topic = \"save_success\";\nmsg.payload = true;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 640,
+        "wires": [
+            [
+                "schedule_ui_template"
             ]
         ]
     }
