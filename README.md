@@ -92,7 +92,13 @@ The HMI is built as a dynamic Single-Page Application (SPA) using a single `@flo
 
 ## Changelog
 
-### v3.0 (Current) - Dynamic InfluxDB & Interactive Trends Overhaul
+### v4.0 (Current) - Academic Event Calendar & Classroom Schedule Overrides
+* **Custom Event Schedule (`/events`)**: Added a campus-wide calendar page before the weekly schedule. Enables scheduling multi-day public holidays, midterm breaks, and empty days (`000000`) applying automatically across all classrooms.
+* **Classroom Calendar & Date Overrides (`/schedule`)**: Integrated an interactive calendar within each classroom's schedule page. Displays inherited global holidays and allows classrooms to either add specific empty days or overwrite empty days/regular days with custom session schedules (e.g. makeup sessions).
+* **Schedule Precedence Hierarchy**: Automated daily schedule evaluator prioritizes: (1) Classroom Date Override -> (2) Campus-wide Global Holiday / Empty Day -> (3) Weekly Recurring Timetable.
+* **Real-time Synchronization & InfluxDB Persistence**: Persists all global events (`classroom_global_events`) and room overrides (`classroom_date_overrides`) into InfluxDB and immediately pushes updates affecting the current day to MQTT `<room>/control/schedule`.
+
+### v3.0 - Dynamic InfluxDB & Interactive Trends Overhaul
 * **Database Polling**: Migrated dashboard data source from direct MQTT subscriptions to periodic InfluxDB polling (every 5 seconds) to handle arbitrary rooms dynamically.
 * **Removed Obsolete Controls**: Removed light calibration controls and individual device validations (shifted logic to ESP).
 * **Interactive SVG Charts**: Implemented custom SVG charting inside the template containing X/Y axis labels, Y-axis units (`°C`, `Lx`, `ppm`), and hover-sensitive transparent overlay targets for instant point-specific tooltips.
@@ -106,3 +112,4 @@ The HMI is built as a dynamic Single-Page Application (SPA) using a single `@flo
 ### v1.0 - Initial Release
 * **Static Dashboard**: Standard Node-RED Dashboard flow containing hardcoded grid widgets for `HD01` classrooms.
 * **Validation & Calibration**: Integrated client-side lux calibration and device status validation flow.
+
